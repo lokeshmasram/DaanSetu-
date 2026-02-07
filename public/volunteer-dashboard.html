@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Volunteer Dashboard - DaanSetu</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="dashboard-styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-content">
+                <div class="logo">
+                    <h2><i class="fas fa-hands-helping"></i> DaanSetu</h2>
+                </div>
+                <div class="user-info">
+                    <span id="volunteerName">Loading...</span>
+                    <button id="logoutBtn" class="btn-secondary">Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="dashboard-main">
+            <!-- Dashboard Grid -->
+            <div class="dashboard-grid">
+                <!-- Available Tasks -->
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-tasks"></i> Available Tasks</h3>
+                        <div class="card-actions">
+                            <button id="refreshTasks" class="btn-icon">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <div id="availableTasks" class="tasks-list">
+                            <div class="loading">Loading available tasks...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- My Tasks -->
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-clipboard-list"></i> My Tasks</h3>
+                    </div>
+                    <div class="card-content">
+                        <div id="myTasks" class="tasks-list">
+                            <div class="empty-state">
+                                <i class="fas fa-clipboard"></i>
+                                <p>No tasks accepted yet</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistics -->
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-chart-bar"></i> My Impact</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="stats-grid">
+                            <div class="stat-item stat-clickable" onclick="window.location.href='/volunteer/view-all'">
+                                <div class="stat-number" id="totalTasks">0</div>
+                                <div class="stat-label">Total Tasks</div>
+                                <div class="stat-hint">Click to view details</div>
+                            </div>
+                            <div class="stat-item stat-clickable" onclick="window.location.href='/volunteer/view-completed'">
+                                <div class="stat-number" id="completedTasks">0</div>
+                                <div class="stat-label">Completed</div>
+                                <div class="stat-hint">Click to view details</div>
+                            </div>
+                            <div class="stat-item stat-clickable" onclick="window.location.href='/volunteer/view-active'">
+                                <div class="stat-number" id="activeTasks">0</div>
+                                <div class="stat-label">Active</div>
+                                <div class="stat-hint">Click to view details</div>
+                            </div>
+                            <div class="stat-item stat-clickable" onclick="window.location.href='/volunteer/view-ngos-helped'">
+                                <div class="stat-number" id="ngosHelped">0</div>
+                                <div class="stat-label">NGOs Helped</div>
+                                <div class="stat-hint">Click to view details</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Task History -->
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-history"></i> Task History</h3>
+                        <div class="card-actions">
+                            <button id="refreshHistory" class="btn-icon">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <div id="taskHistory" class="tasks-list">
+                            <div class="empty-state">
+                                <i class="fas fa-history"></i>
+                                <p>No task history yet</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Task Details Modal -->
+    <div id="taskModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Task Details</h3>
+                <button class="close-btn" onclick="closeModal('taskModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="taskDetails" class="task-details">
+                <!-- Task details will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="notificationToast" class="notification-toast hidden">
+            <i class="fas fa-bell"></i>
+            <span id="toastMessage"></span>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/volunteer-dashboard.js"></script>
+</body>
+</html>

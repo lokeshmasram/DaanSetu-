@@ -1,0 +1,108 @@
+<!-- 
+  Example HTML structure for the pending verification alert
+  
+  Add this to public/ngo-dashboard.html where you want the alert to appear
+  (usually near the top of the dashboard content area)
+-->
+
+<!-- Option 1: Simple Alert Box -->
+<div class="pending-verification-alert" id="pendingAlert" style="
+  background-color: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  padding: 15px 20px;
+  margin: 20px 0;
+  display: none;
+">
+  <div style="display: flex; align-items: center; gap: 10px;">
+    <span style="font-size: 24px;">⏳</span>
+    <div>
+      <strong style="color: #856404;">Pending Verification</strong>
+      <p style="margin: 5px 0 0 0; color: #856404;">
+        Your NGO account is pending verification. Please wait for admin approval.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- Option 2: Bootstrap-style Alert (if using Bootstrap) -->
+<div class="alert alert-warning pending-verification-alert" role="alert" style="display: none;">
+  <h4 class="alert-heading">⏳ Pending Verification</h4>
+  <p>Your NGO account is pending verification. Please wait for admin approval.</p>
+  <hr>
+  <p class="mb-0">You will be notified once your account is verified.</p>
+</div>
+
+<!-- Option 3: Card-style Alert -->
+<div class="pending-verification-alert" style="
+  background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 20px 0;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  display: none;
+">
+  <div style="display: flex; align-items: start; gap: 15px;">
+    <div style="
+      background: white;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      flex-shrink: 0;
+    ">
+      ⏳
+    </div>
+    <div style="flex: 1;">
+      <h3 style="margin: 0 0 10px 0; color: #2d3436; font-size: 18px;">
+        Verification Pending
+      </h3>
+      <p style="margin: 0; color: #636e72; line-height: 1.5;">
+        Your NGO registration is currently under review by our admin team. 
+        You will receive full access to the dashboard once your account is verified.
+      </p>
+      <p style="margin: 10px 0 0 0; color: #636e72; font-size: 14px;">
+        <strong>Note:</strong> This usually takes 24-48 hours.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- 
+  IMPORTANT NOTES:
+  
+  1. The alert MUST have the class "pending-verification-alert" for the JavaScript to find it
+  
+  2. Set display: none by default, then show it conditionally in JavaScript:
+     
+     const user = JSON.parse(localStorage.getItem('user') || '{}');
+     const pendingAlert = document.querySelector('.pending-verification-alert');
+     
+     if (pendingAlert && user.status === 'pending_verification') {
+       pendingAlert.style.display = 'block'; // or 'flex' depending on your layout
+     }
+  
+  3. The JavaScript code in ngo-verification-update.js will automatically hide this
+     when the NGO is verified
+     
+  4. Choose ONE of the options above that matches your dashboard's design style
+-->
+
+<!-- Example JavaScript to show/hide the alert on page load -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const pendingAlert = document.querySelector('.pending-verification-alert');
+    
+    if (pendingAlert) {
+      if (user.status === 'pending_verification') {
+        pendingAlert.style.display = 'block'; // Show alert
+      } else {
+        pendingAlert.style.display = 'none'; // Hide alert
+      }
+    }
+  });
+</script>

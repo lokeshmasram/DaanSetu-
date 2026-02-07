@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Dashboard - DaanSetu</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="dashboard-styles.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    <div id="adminLoginContainer" class="dashboard-container">
+      <div
+        id="adminLoginForm"
+        style="
+          max-width: 400px;
+          margin: 40px auto;
+          padding: 32px 24px;
+          background: #fff;
+          border-radius: 8px;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        "
+      >
+        <h2 style="text-align: center; margin-bottom: 24px">Admin Login</h2>
+        <form id="staticAdminLoginForm">
+          <div style="margin-bottom: 16px">
+            <label for="adminUsername">Email or Username</label>
+            <input
+              type="text"
+              id="adminUsername"
+              name="adminUsername"
+              class="form-input"
+              required
+              autocomplete="username"
+              value="admin"
+            />
+          </div>
+          <div style="margin-bottom: 24px">
+            <label for="adminPassword">Password</label>
+            <div class="password-wrapper">
+              <input
+                type="password"
+                id="adminPassword"
+                name="adminPassword"
+                class="form-input"
+                required
+                autocomplete="current-password"
+                value="admin123"
+              />
+              <button type="button" class="toggle-password" aria-label="Show password">
+                <i class="fas fa-eye" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
+          <button type="submit" class="btn-success" style="width: 100%">
+            Login
+          </button>
+        </form>
+        <div
+          id="adminLoginError"
+          style="
+            color: #c00;
+            text-align: center;
+            margin-top: 16px;
+            display: none;
+          "
+        ></div>
+      </div>
+    </div>
+    <div
+      class="dashboard-container"
+      id="adminDashboardContainer"
+      style="display: none"
+    >
+      <!-- Header -->
+      <header class="dashboard-header">
+        <div class="header-content">
+          <div class="logo">
+            <h2><i class="fas fa-hands-helping"></i> DaanSetu</h2>
+          </div>
+          <div class="user-info">
+            <span id="adminName">Admin</span>
+            <button id="logoutBtn" class="btn-secondary">Logout</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Content -->
+      <main class="dashboard-main">
+        <!-- Dashboard Grid -->
+        <div class="dashboard-grid">
+          <!-- Platform Statistics -->
+          <div class="dashboard-card">
+            <div class="card-header">
+              <h3><i class="fas fa-chart-line"></i> Platform Statistics</h3>
+              <div class="card-actions">
+                <button id="refreshStats" class="btn-icon">
+                  <i class="fas fa-sync-alt"></i>
+                </button>
+              </div>
+            </div>
+            <div class="card-content">
+              <div class="stats-grid">
+                <div class="stat-item stat-clickable" onclick="window.location.href='/admin/view-users'">
+                  <div class="stat-number" id="totalUsers">0</div>
+                  <div class="stat-label">Total Users</div>
+                  <div class="stat-hint">Click to view details</div>
+                </div>
+                <div class="stat-item stat-clickable" onclick="window.location.href='/admin/view-donations'">
+                  <div class="stat-number" id="totalDonations">0</div>
+                  <div class="stat-label">Total Donations</div>
+                  <div class="stat-hint">Click to view details</div>
+                </div>
+                <div class="stat-item stat-clickable" onclick="window.location.href='/admin/view-donors'">
+                  <div class="stat-number" id="totalDonors">0</div>
+                  <div class="stat-label">Total Donors</div>
+                  <div class="stat-hint">Click to view details</div>
+                </div>
+                <div class="stat-item stat-clickable" onclick="window.location.href='/admin/view-volunteers'">
+                  <div class="stat-number" id="totalVolunteers">0</div>
+                  <div class="stat-label">Total Volunteers</div>
+                  <div class="stat-hint">Click to view details</div>
+                </div>
+                <div class="stat-item stat-clickable" onclick="window.location.href='/admin/view-ngos'">
+                  <div class="stat-number" id="verifiedNGOs">0</div>
+                  <div class="stat-label">Verified NGOs</div>
+                  <div class="stat-hint">Click to view details</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-number" id="pendingNGOs">0</div>
+                  <div class="stat-label">Pending NGOs</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- NGO Verifications -->
+          <div class="dashboard-card">
+            <div class="card-header">
+              <h3><i class="fas fa-user-check"></i> NGO Verifications</h3>
+              <div class="card-actions">
+                <button id="refreshNGOs" class="btn-icon">
+                  <i class="fas fa-sync-alt"></i>
+                </button>
+              </div>
+            </div>
+            <div class="card-content">
+              <div id="pendingNGOsList" class="ngos-list">
+                <div class="loading">Loading pending NGOs...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Donations -->
+          <div class="dashboard-card">
+            <div class="card-header">
+              <h3><i class="fas fa-gift"></i> Recent Donations</h3>
+              <div class="card-actions">
+                <button id="refreshDonations" class="btn-icon">
+                  <i class="fas fa-sync-alt"></i>
+                </button>
+              </div>
+            </div>
+            <div class="card-content">
+              <div id="recentDonations" class="donations-list">
+                <div class="loading">Loading recent donations...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Platform Activity -->
+          <div class="dashboard-card">
+            <div class="card-header">
+              <h3><i class="fas fa-stream"></i> Platform Activity</h3>
+              <div class="card-actions">
+                <button id="refreshActivity" class="btn-icon">
+                  <i class="fas fa-sync-alt"></i>
+                </button>
+              </div>
+            </div>
+            <div class="card-content">
+              <div id="platformActivity" class="activity-list">
+                <div class="loading">Loading activities...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- NGO Verification Modal -->
+    <div id="ngoVerificationModal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>NGO Verification</h3>
+          <button
+            class="close-btn"
+            onclick="closeModal('ngoVerificationModal')"
+          >
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div id="ngoVerificationDetails" class="ngo-verification-details">
+          <!-- NGO details will be populated here -->
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-danger" onclick="rejectNGO()">
+            Reject
+          </button>
+          <button type="button" class="btn-success" onclick="approveNGO()">
+            Approve
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Donation Details Modal -->
+    <div id="donationModal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Donation Details</h3>
+          <button class="close-btn" onclick="closeModal('donationModal')">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div id="donationDetails" class="donation-details">
+          <!-- Donation details will be populated here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="notificationToast" class="notification-toast hidden">
+      <div class="toast-content">
+        <i class="fas fa-bell"></i>
+        <span id="toastMessage"></span>
+      </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/admin-dashboard.js"></script>
+  </body>
+</html>

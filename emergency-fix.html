@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NGO Status Emergency Fix</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .status-box {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .status-box h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        .status-box p {
+            color: #666;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+        
+        .status-value {
+            font-weight: bold;
+            color: #667eea;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 10px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+        
+        .log {
+            background: #1e1e1e;
+            color: #00ff00;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+        }
+        
+        .log.show {
+            display: block;
+        }
+        
+        .log-line {
+            margin-bottom: 5px;
+        }
+        
+        .success {
+            color: #00ff00;
+        }
+        
+        .error {
+            color: #ff4444;
+        }
+        
+        .warning {
+            color: #ffaa00;
+        }
+        
+        .info {
+            color: #4facfe;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 NGO Status Emergency Fix</h1>
+        <p class="subtitle">Quick fix for "Your NGO is pending verification" message</p>
+        
+        <div class="status-box">
+            <h3>Current Status</h3>
+            <p>Cached Status: <span class="status-value" id="cachedStatus">Checking...</span></p>
+            <p>Server Status: <span class="status-value" id="serverStatus">Checking...</span></p>
+            <p>User Type: <span class="status-value" id="userType">Checking...</span></p>
+        </div>
+        
+        <button class="btn" onclick="checkStatus()">🔍 Check Current Status</button>
+        <button class="btn btn-success" onclick="updateStatus()">✅ Update Status from Server</button>
+        <button class="btn btn-danger" onclick="clearAndReload()">🔄 Clear Cache & Reload</button>
+        <button class="btn" onclick="forceHideMessage()">👁️ Force Hide Pending Message</button>
+        
+        <div class="log" id="log"></div>
+    </div>
+    
+    <script>
+        const log = document.getElementById('log');
+        
+        function addLog(message, type = 'info') {
+            log.classList.add('show');
+            const line = document.createElement('div');
+            line.className = `log-line ${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            line.textContent = `[${timestamp}] ${message}`;
+            log.appendChild(line);
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        function checkStatus() {
+            addLog('Checking status...', 'info');
+            
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const token = localStorage.getItem('token');
+            
+            document.getElementById('cachedStatus').textContent = user.status || 'Not found';
+            document.getElementById('userType').textContent = user.userType || 'Not found';
+            
+            addLog(`Cached status: ${user.status}`, 'success');
+            addLog(`User type: ${user.userType}`, 'success');
+            
+            if (!token) {
+                addLog('No token found - user not logged in', 'error');
+                document.getElementById('serverStatus').textContent = 'Not logged in';
+                return;
+            }
+            
+            if (user.userType !== 'ngo') {
+                addLog('User is not an NGO', 'warning');
+                document.getElementById('serverStatus').textContent = 'N/A (not NGO)';
+                return;
+            }
+            
+            addLog('Fetching status from server...', 'info');
+            
+            fetch('/api/ngos/status', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('serverStatus').textContent = data.status;
+                    addLog(`Server status: ${data.status}`, 'success');
+                    
+                    if (user.status !== data.status) {
+                        addLog(`⚠️ Status mismatch! Cached: ${user.status}, Server: ${data.status}`, 'warning');
+                        addLog('Click "Update Status from Server" to fix this', 'warning');
+                    } else {
+                        addLog('✅ Status is in sync', 'success');
+                    }
+                } else {
+                    addLog('Failed to fetch status from server', 'error');
+                    document.getElementById('serverStatus').textContent = 'Error';
+                }
+            })
+            .catch(error => {
+                addLog(`Error: ${error.message}`, 'error');
+                document.getElementById('serverStatus').textContent = 'Error';
+            });
+        }
+        
+        function updateStatus() {
+            addLog('Updating status from server...', 'info');
+            
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const token = localStorage.getItem('token');
+            
+            if (!token || user.userType !== 'ngo') {
+                addLog('Cannot update - not logged in as NGO', 'error');
+                return;
+            }
+            
+            fetch('/api/ngos/status', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const oldStatus = user.status;
+                    user.status = data.status;
+                    localStorage.setItem('user', JSON.stringify(user));
+                    
+                    addLog(`Status updated: ${oldStatus} → ${data.status}`, 'success');
+                    
+                    if (data.status === 'verified') {
+                        addLog('🎉 NGO is verified! Reloading in 2 seconds...', 'success');
+                        setTimeout(() => {
+                            window.location.href = '/ngo-dashboard';
+                        }, 2000);
+                    } else {
+                        addLog('Status updated in cache', 'success');
+                        checkStatus();
+                    }
+                } else {
+                    addLog('Failed to update status', 'error');
+                }
+            })
+            .catch(error => {
+                addLog(`Error: ${error.message}`, 'error');
+            });
+        }
+        
+        function clearAndReload() {
+            addLog('Clearing localStorage...', 'warning');
+            localStorage.clear();
+            addLog('Cache cleared!', 'success');
+            addLog('Redirecting to home page...', 'info');
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1000);
+        }
+        
+        function forceHideMessage() {
+            addLog('Attempting to hide pending message...', 'info');
+            
+            // Try to find and hide the pending message in the parent window
+            if (window.opener) {
+                const parentDoc = window.opener.document;
+                const selectors = ['[id*="pending"]', '[class*="pending"]', '.alert', '.banner'];
+                let found = false;
+                
+                selectors.forEach(selector => {
+                    parentDoc.querySelectorAll(selector).forEach(element => {
+                        const text = element.textContent || '';
+                        if (text.toLowerCase().includes('pending') && text.toLowerCase().includes('verification')) {
+                            element.style.display = 'none';
+                            found = true;
+                            addLog(`Hidden element: ${selector}`, 'success');
+                        }
+                    });
+                });
+                
+                if (found) {
+                    addLog('✅ Pending message hidden!', 'success');
+                } else {
+                    addLog('No pending message found', 'warning');
+                }
+            } else {
+                addLog('This function works best when opened from NGO dashboard', 'warning');
+                addLog('Try: Open NGO dashboard, then open this page in a new tab', 'info');
+            }
+        }
+        
+        // Auto-check on load
+        window.onload = function() {
+            addLog('Emergency Fix Tool loaded', 'success');
+            setTimeout(checkStatus, 500);
+        };
+    </script>
+</body>
+</html>

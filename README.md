@@ -87,12 +87,28 @@ Before running this project, make sure you have:
    JWT_SECRET=your-jwt-secret
    ```
 
-5. **Start the development server**
+### 6. **Set up Google Maps API (for impact map feature)**
+
+   a. Get a Google Maps API key:
+      - Go to [Google Cloud Console](https://console.cloud.google.com/)
+      - Create a new project
+      - Enable the "Maps JavaScript API"
+      - Create an API key (restrict it to your domain for production)
+
+   b. Set the API key in your browser (during development):
+      - Open the browser console (F12)
+      - Run: `setGoogleMapsKey('YOUR_API_KEY')`
+      - Or manually set: `localStorage.setItem('G_MAPS_KEY', 'YOUR_API_KEY'); location.reload();`
+      - The page will reload and maps will be available
+
+   c. For production, add your API key to the backend configuration
+
+7. **Start the development server**
    ```bash
    npm run dev
    ```
 
-6. **Access the application**
+8. **Access the application**
    Open your browser and navigate to `http://localhost:3000`
 
 ## 📁 Project Structure

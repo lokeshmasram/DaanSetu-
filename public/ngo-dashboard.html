@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NGO Dashboard - DaanSetu</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="dashboard-styles.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    <div class="dashboard-container">
+      <!-- Header -->
+      <header class="dashboard-header">
+        <div class="header-content">
+          <div class="logo">
+            <h2><i class="fas fa-hands-helping"></i> DaanSetu</h2>
+          </div>
+          <div class="user-info">
+            <span id="ngoName">Loading...</span>
+            <button id="updateLocationBtn" class="btn-secondary">
+              Update Location
+            </button>
+            <button id="logoutBtn" class="btn-secondary">Logout</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Content -->
+      <main class="dashboard-main">
+        <!-- Status Banner -->
+        <div id="statusBanner" class="status-banner hidden">
+          <div class="status-content">
+            <i class="fas fa-info-circle"></i>
+            <span id="statusMessage"></span>
+          </div>
+        </div>
+
+        <!-- Dashboard Grid -->
+        <div class="dashboard-grid">
+          <!-- Available Donations -->
+          <div class="dashboard-card">
+            <div class="card-header">
+              <h3><i class="fas fa-gift"></i> Available Donations</h3>
+              <div class="card-actions">
+                <button id="refreshDonations" class="btn-icon">
+                  <i class="fas fa-sync-alt"></i>
+                </button>
+              </div>
+            </div>
+            <div class="card-content">
+              <div id="donationsList" class="donations-list">
+                <div class="loading">Loading available donations...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Accepted Donations -->
+          <div class="dashboard-card">
+            <div class="card-header">
+              <h3><i class="fas fa-check-circle"></i> Accepted Donations</h3>
+            </div>
+            <div class="card-content">
+              <div id="acceptedDonations" class="donations-list">
+                <div class="empty-state">
+                  <i class="fas fa-inbox"></i>
+                  <p>No accepted donations yet</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Statistics -->
+          <div class="dashboard-card">
+            <div class="card-header">
+              <h3><i class="fas fa-chart-bar"></i> Statistics</h3>
+            </div>
+            <div class="card-content">
+              <div class="stats-grid">
+                <div class="stat-item stat-clickable" onclick="window.location.href='/ngo/view-accepted'">
+                  <div class="stat-number" id="totalAccepted">0</div>
+                  <div class="stat-label">Total Accepted</div>
+                  <div class="stat-hint">Click to view details</div>
+                </div>
+                <div class="stat-item stat-clickable" onclick="window.location.href='/ngo/view-completed'">
+                  <div class="stat-number" id="totalCompleted">0</div>
+                  <div class="stat-label">Completed</div>
+                  <div class="stat-hint">Click to view details</div>
+                </div>
+                <div class="stat-item stat-clickable" onclick="window.location.href='/ngo/view-pending'">
+                  <div class="stat-number" id="pendingPickup">0</div>
+                  <div class="stat-label">Pending Pickup</div>
+                  <div class="stat-hint">Click to view details</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Volunteer Tasks -->
+          <div class="dashboard-card">
+            <div class="card-header">
+              <h3><i class="fas fa-users"></i> Volunteer Tasks</h3>
+              <div class="card-actions">
+                <button id="createTaskBtn" class="btn-primary">
+                  Create Task
+                </button>
+              </div>
+            </div>
+            <div class="card-content">
+              <div id="volunteerTasks" class="tasks-list">
+                <div class="empty-state">
+                  <i class="fas fa-tasks"></i>
+                  <p>No volunteer tasks created</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Create Task Modal -->
+    <div id="createTaskModal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Create Volunteer Task</h3>
+          <button class="close-btn" onclick="closeModal('createTaskModal')">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <form id="createTaskForm">
+          <div class="form-group">
+            <label for="taskTitle">Task Title</label>
+            <input type="text" id="taskTitle" name="title" required />
+          </div>
+          <div class="form-group">
+            <label for="taskDescription">Description</label>
+            <textarea
+              id="taskDescription"
+              name="description"
+              rows="3"
+              required
+            ></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="taskLocation">Location</label>
+              <input type="text" id="taskLocation" name="location" required />
+            </div>
+            <div class="form-group">
+              <label for="taskDate">Date</label>
+              <input type="date" id="taskDate" name="date" required />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="taskType">Task Type</label>
+            <select id="taskType" name="type" required>
+              <option value="">Select type</option>
+              <option value="pickup">Pickup</option>
+              <option value="delivery">Delivery</option>
+              <option value="sorting">Sorting</option>
+              <option value="distribution">Distribution</option>
+            </select>
+          </div>
+          <div class="form-actions">
+            <button
+              type="button"
+              class="btn-secondary"
+              onclick="closeModal('createTaskModal')"
+            >
+              Cancel
+            </button>
+            <button type="submit" class="btn-primary">Create Task</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Update Location Modal -->
+    <div id="updateLocationModal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Update NGO Location</h3>
+          <button class="close-btn" onclick="closeModal('updateLocationModal')">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p>
+            Click on the map to set your NGO's location. This will help donors
+            find you and enable you to see nearby donations.
+          </p>
+          <div class="form-group">
+            <label for="ngoLocationInput">Location Coordinates</label>
+            <input type="text" id="ngoLocationInput" name="ngoLocation" placeholder="Location will be displayed here" readonly />
+          </div>
+          <div id="ngoMap" class="donation-map-container"></div>
+          <div class="form-actions">
+            <button type="button" id="clearNgoLocation" class="btn-secondary">
+              Clear Location
+            </button>
+            <button type="button" id="saveNgoLocation" class="btn-primary">
+              Save Location
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Donation Details Modal -->
+    <div id="donationModal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Donation Details</h3>
+          <button class="close-btn" onclick="closeModal('donationModal')">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div id="donationDetails" class="donation-details">
+          <!-- Donation details will be populated here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="notificationToast" class="notification-toast hidden">
+      <div class="toast-content">
+        <i class="fas fa-bell"></i>
+        <span id="toastMessage"></span>
+      </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/ngo-dashboard.js"></script>
+    
+    <!-- Balanced protection against initial status banner flash -->
+    <script>
+      (function() {
+        'use strict';
+        
+        // Balanced approach: Only hide the initial pending verification message
+        // but allow legitimate verification notifications to show
+        function initializeBannerProtection() {
+          try {
+            // Hide by ID initially
+            const statusBanner = document.getElementById('statusBanner');
+            if (statusBanner) {
+              // Only hide if we haven't received a verification notification yet
+              if (!window.verificationNotificationReceived) {
+                statusBanner.style.display = 'none';
+                statusBanner.classList.add('hidden');
+              }
+            }
+            
+            // Balanced CSS override - less aggressive than before
+            const style = document.createElement('style');
+            style.textContent = `
+              #statusBanner.initial-hidden, .status-banner.initial-hidden {
+                display: none !important;
+              }
+            `;
+            document.head.appendChild(style);
+          } catch (e) {
+            console.error('Error in banner protection:', e);
+          }
+        }
+        
+        // Apply immediately and after a short delay
+        initializeBannerProtection();
+        setTimeout(initializeBannerProtection, 100);
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DaanSetu - Connecting Kindness, One Donation at a Time</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-sA+e2GgYw8+qz0JY4p5Qjv2pT6w0s5V1Pp0u7g1p3o0=" crossorigin="" />
+    <style>
+      .suggestions { position: relative; }
+      #pickupSuggestions { position: relative; max-height:200px; overflow:auto; background:white; border:1px solid #e5e7eb; border-radius:6px; margin-top:6px; }
+      #pickupSuggestions .suggestion-item { padding:8px 10px; cursor:pointer; border-bottom:1px solid #f3f4f6; }
+      #pickupSuggestions .suggestion-item:hover { background:#f3f4f6; }
+    </style>
+  </head>
+  <body>
+    <!-- Header/Navigation -->
+    <header class="header">
+      <nav class="nav">
+        <div class="nav-brand">
+          <h1 class="logo">DaanSetu</h1>
+        </div>
+        <ul class="nav-menu" id="navMenu">
+          <li><a href="#about">About</a></li>
+          <li><a href="#how-it-works">How It Works</a></li>
+          <li><a href="#" onclick="showLoginModal()">Login</a></li>
+          <li><a href="#" onclick="showForgotPasswordModal()" style="font-size: 0.9em;">Forgot Password</a></li>
+          <li><a href="#" onclick="showRegistrationModal()">Register</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="hero-content">
+        <h1 class="hero-title">Connecting Kindness, One Donation at a Time</h1>
+        <p class="hero-subtitle">
+          Donate food, clothes, or supplies in bulk - we connect you with NGOs
+          who need them most.
+        </p>
+        <div class="hero-buttons">
+          <button class="btn btn-primary" onclick="showDonationModal()">
+            Make a Donation
+          </button>
+          <button class="btn btn-secondary" onclick="showRegistrationModal()">
+            Register as NGO
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Quick Access Section (for non-logged in users) -->
+    <section
+      id="quick-access"
+      class="section"
+      style="background-color: #f8fafc; display: none"
+    >
+      <div class="container">
+        <h2 class="section-title">Quick Access</h2>
+        <p class="section-text">
+          Already have an account? Access your dashboard directly:
+        </p>
+        <div
+          class="quick-access-buttons"
+          style="
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 30px;
+          "
+        >
+          <button class="btn btn-outline" onclick="loginAndRedirect('donor')">
+            Donor Dashboard
+          </button>
+          <button class="btn btn-outline" onclick="loginAndRedirect('ngo')">
+            NGO Dashboard
+          </button>
+          <button
+            class="btn btn-outline"
+            onclick="loginAndRedirect('volunteer')"
+          >
+            Volunteer Dashboard
+          </button>
+          <button class="btn btn-outline" onclick="loginAndRedirect('admin')">
+            Admin Dashboard
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- What is DaanSetu Section -->
+    <section id="about" class="section">
+      <div class="container">
+        <h2 class="section-title">What is DaanSetu?</h2>
+        <p class="section-text">
+          A digital bridge between individuals or businesses willing to donate
+          essential items - and verified NGOs who are in urgent need of them.
+        </p>
+      </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section id="how-it-works" class="section">
+      <div class="container">
+        <h2 class="section-title">How It Works</h2>
+        <div class="steps">
+          <div class="step">
+            <div class="step-number">1</div>
+            <h3 class="step-title">List Your Donation</h3>
+            <p class="step-description">
+              Choose the type and quantity of items you've
+            </p>
+          </div>
+          <div class="step">
+            <div class="step-number">2</div>
+            <h3 class="step-title">Get Matched</h3>
+            <p class="step-description">Nearby NGOs will be notified and can</p>
+          </div>
+          <div class="step">
+            <div class="step-number">3</div>
+            <h3 class="step-title">Pickup & Delivery</h3>
+            <p class="step-description">Pickup & delivery to those in need.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="section features">
+      <div class="container">
+        <div class="features-grid">
+          <div class="feature">
+            <i class="fas fa-chart-bar feature-icon"></i>
+            <h3 class="feature-title">Live donation dashboard</h3>
+          </div>
+          <div class="feature">
+            <i class="fas fa-comments feature-icon"></i>
+            <h3 class="feature-title">NGO verification system</h3>
+          </div>
+          <div class="feature">
+            <i class="fas fa-users feature-icon"></i>
+            <h3 class="feature-title">Volunteer sign-ups</h3>
+          </div>
+          <div class="feature">
+            <i class="fas fa-file-alt feature-icon"></i>
+            <h3 class="feature-title">Donor History & analytics</h3>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal">
+      <div class="modal-content">
+        <span class="close" onclick="closeModal('loginModal')">&times;</span>
+        <h2>Login</h2>
+        <form id="loginForm" class="form">
+          <div class="form-group">
+            <label for="loginEmail">Email</label>
+            <input type="email" id="loginEmail" required />
+          </div>
+          <div class="form-group">
+            <label for="loginPassword">Password</label>
+            <div class="password-wrapper">
+              <input type="password" id="loginPassword" required />
+              <button type="button" class="toggle-password" aria-label="Show password">
+                <i class="fas fa-eye" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
+          <div style="text-align: left; margin-bottom: 15px;">
+            <a href="#" onclick="showForgotPasswordModal()" style="font-size: 0.9em;">Forgot Password?</a>
+          </div>
+          <button type="submit" class="btn btn-primary">Login</button>
+        </form>
+        <p>
+          Don't have an account?
+          <a href="#" onclick="showRegistrationModal()">Register here</a>
+        </p>
+      </div>
+    </div>
+
+    <!-- Registration Modal -->
+    <div id="registrationModal" class="modal">
+      <div class="modal-content">
+        <span class="close" onclick="closeModal('registrationModal')"
+          >&times;</span
+        >
+        <h2>Register</h2>
+        <form id="registrationForm" class="form">
+          <div class="form-group">
+            <label for="userType">I want to register as:</label>
+            <select id="userType" required>
+              <option value="">Select user type</option>
+              <option value="donor">Donor</option>
+              <option value="ngo">NGO</option>
+              <option value="volunteer">Volunteer</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="regName">Full Name</label>
+            <input type="text" id="regName" required />
+          </div>
+          <div class="form-group">
+            <label for="regEmail">Email</label>
+            <input type="email" id="regEmail" required />
+          </div>
+          <div class="form-group">
+            <label for="regPhone">Phone</label>
+            <input type="tel" id="regPhone" required />
+          </div>
+          <div class="form-group">
+            <label for="regAddress">Address</label>
+            <textarea id="regAddress" required></textarea>
+          </div>
+          <div class="form-group ngo-only" style="display: none">
+            <label for="regId">Registration ID</label>
+            <input type="text" id="regId" required />
+          </div>
+          <div class="form-group">
+            <label for="regPassword">Password</label>
+            <div class="password-wrapper">
+              <input type="password" id="regPassword" required />
+              <button type="button" class="toggle-password" aria-label="Show password">
+                <i class="fas fa-eye" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary">Register</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Donation Modal -->
+    <div id="donationModal" class="modal">
+      <div class="modal-content">
+        <span class="close" onclick="closeModal('donationModal')">&times;</span>
+        <h2>Make a Donation</h2>
+        <form id="donationForm" class="form">
+          <div class="form-group">
+            <label for="itemType">Item Type</label>
+            <select id="itemType" required>
+              <option value="">Select item type</option>
+              <option value="food">Food</option>
+              <option value="clothes">Clothes</option>
+              <option value="supplies">Supplies</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="quantity">Quantity</label>
+            <input type="number" id="quantity" required />
+          </div>
+          <div class="form-group">
+            <label for="description">Description</label>
+            <textarea id="description" required></textarea>
+          </div>
+          <div class="form-group">
+            <label for="pickupAddress">Pickup Address</label>
+            <input type="text" id="pickupAddress" placeholder="Type address to search..." required />
+            <div id="pickupSuggestions" class="suggestions"></div>
+            <div style="margin-top:8px; display:flex; gap:8px; align-items:center;">
+              <button type="button" id="useCurrentLocation" class="btn btn-outline">Use current location</button>
+              <small style="color:#6b7280;">You can also drag the marker on the map to fine-tune.</small>
+            </div>
+            <input type="hidden" id="pickupLat" />
+            <input type="hidden" id="pickupLng" />
+            <div id="pickupMap" style="height:240px; margin-top:10px; border:1px solid #e5e7eb; border-radius:6px; display:none;"></div>
+          </div>
+          <button type="submit" class="btn btn-primary">List Donation</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Forgot Password Modal -->
+    <div id="forgotPasswordModal" class="modal">
+      <div class="modal-content">
+        <span class="close" onclick="closeModal('forgotPasswordModal')">&times;</span>
+        <h2>Forgot Password</h2>
+        <p>Enter your email address and we'll send you a link to reset your password.</p>
+        <form id="forgotPasswordForm" class="form">
+          <div class="form-group">
+            <label for="forgotEmail">Email Address</label>
+            <input type="email" id="forgotEmail" required />
+          </div>
+          <button type="submit" class="btn btn-primary">Send Reset Link</button>
+        </form>
+      </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-o9N1j8k3kYk2Qq5kYpK6M0k5b6Gd2y1+v+v2fF0k0gI=" crossorigin=""></script>
+    <script src="/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Donor Dashboard - DaanSetu</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="dashboard-styles.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+  </head>
+  <body>
+    <div class="dashboard-container">
+      <!-- Header -->
+      <header class="dashboard-header">
+        <div class="header-content">
+          <div class="logo">
+            <h2><i class="fas fa-hands-helping"></i> DaanSetu</h2>
+          </div>
+          <div class="user-info">
+            <span id="donorName">Loading...</span>
+            <button id="logoutBtn" class="btn-secondary">Logout</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Content -->
+      <main class="dashboard-main">
+        <!-- Status Banner -->
+        <div id="statusBanner" class="status-banner hidden">
+          <div class="status-content">
+            <i class="fas fa-info-circle"></i>
+            <span id="statusMessage"></span>
+          </div>
+        </div>
+
+        <!-- Dashboard Grid -->
+        <div class="dashboard-grid">
+          <!-- Make a Donation -->
+          <div class="dashboard-card">
+            <div class="card-header">
+              <h3><i class="fas fa-gift"></i> Make a Donation</h3>
+              <div class="card-actions">
+                <button id="newDonationBtn" class="btn-primary">
+                  New Donation
+                </button>
+              </div>
+            </div>
+            <div class="card-content">
+              <p>Ready to make a difference? Create a new donation and help NGOs in your area.</p>
+              <div class="donation-features">
+                <p><i class="fas fa-map-marker-alt"></i> 15km radius</p>
+                <p><i class="fas fa-bolt"></i> Real-time matching</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Donations -->
+          <div class="dashboard-card">
+            <div class="card-header">
+              <h3><i class="fas fa-history"></i> Recent Donations</h3>
+              <div class="card-actions">
+                <button id="refreshDonations" class="btn-icon">
+                  <i class="fas fa-sync-alt"></i>
+                </button>
+              </div>
+            </div>
+            <div class="card-content">
+              <div id="recentDonations" class="donations-list">
+                <div class="loading">Loading your donations...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Your Impact Statistics -->
+          <div class="dashboard-card">
+            <div class="card-header">
+              <h3><i class="fas fa-chart-bar"></i> Your Impact</h3>
+            </div>
+            <div class="card-content">
+              <div class="stats-grid">
+                <div class="stat-item stat-clickable">
+                  <div class="stat-number" id="totalDonations">0</div>
+                  <div class="stat-label">Total Donations</div>
+                  <div class="stat-hint">Click to view details</div>
+                </div>
+                <div class="stat-item stat-clickable">
+                  <div class="stat-number" id="completedDonations">0</div>
+                  <div class="stat-label">Completed</div>
+                  <div class="stat-hint">Click to view details</div>
+                </div>
+                <div class="stat-item stat-clickable">
+                  <div class="stat-number" id="pendingDonations">0</div>
+                  <div class="stat-label">Pending</div>
+                  <div class="stat-hint">Click to view details</div>
+                </div>
+                <div class="stat-item stat-clickable">
+                  <div class="stat-number" id="cancelledDonations">0</div>
+                  <div class="stat-label">Cancelled</div>
+                  <div class="stat-hint">Click to view details</div>
+                </div>
+                <div class="stat-item stat-clickable">
+                  <div class="stat-number" id="ngosHelped">0</div>
+                  <div class="stat-label">NGOs Helped</div>
+                  <div class="stat-hint">Click to view details</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Your Impact Map -->
+          <div class="dashboard-card">
+            <div class="card-header">
+              <h3><i class="fas fa-map"></i> Your Impact Map</h3>
+            </div>
+            <div class="card-content">
+              <div class="empty-state">
+                <i class="fas fa-map-marked-alt"></i>
+                <p>Map showing your donation locations</p>
+                <small>Coming soon...</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- New Donation Modal -->
+    <div id="newDonationModal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Make a New Donation</h3>
+          <button class="close-btn" onclick="closeModal('newDonationModal')">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <form id="newDonationForm">
+          <div class="form-group">
+            <label for="itemType">Item Type</label>
+            <select id="itemType" name="itemType" required>
+              <option value="">Select item type</option>
+              <option value="food">Food</option>
+              <option value="clothes">Clothes</option>
+              <option value="books">Books</option>
+              <option value="toys">Toys</option>
+              <option value="medical">Medical Supplies</option>
+              <option value="electronics">Electronics</option>
+              <option value="furniture">Furniture</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="quantity">Quantity</label>
+            <input
+              type="text"
+              id="quantity"
+              name="quantity"
+              placeholder="e.g., 5 bags, 10 items"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="description">Description</label>
+            <textarea
+              id="description"
+              name="description"
+              rows="3"
+              placeholder="Describe your donation (condition, expiry date, etc.)"
+            ></textarea>
+          </div>
+          <div class="form-actions">
+            <button
+              type="button"
+              class="btn-secondary"
+              onclick="closeModal('newDonationModal')"
+            >
+              Cancel
+            </button>
+            <button type="submit" class="btn-primary">Create Donation</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="notificationToast" class="notification-toast hidden">
+      <div class="toast-content">
+        <i class="fas fa-bell"></i>
+        <span id="toastMessage"></span>
+      </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="donor-dashboard.js"></script>
+    
+    <!-- Balanced protection against initial status banner flash -->
+    <script>
+      (function() {
+        'use strict';
+        
+        // Balanced approach: Only hide the initial pending verification message
+        // but allow legitimate verification notifications to show
+        function initializeBannerProtection() {
+          try {
+            // Hide by ID initially
+            const statusBanner = document.getElementById('statusBanner');
+            if (statusBanner) {
+              // Only hide if we haven't received a verification notification yet
+              if (!window.verificationNotificationReceived) {
+                statusBanner.style.display = 'none';
+                statusBanner.classList.add('hidden');
+              }
+            }
+            
+            // Balanced CSS override - less aggressive than before
+            const style = document.createElement('style');
+            style.textContent = `
+              #statusBanner.initial-hidden, .status-banner.initial-hidden {
+                display: none !important;
+              }
+            `;
+            document.head.appendChild(style);
+          } catch (e) {
+            console.error('Error in banner protection:', e);
+          }
+        }
+        
+        // Apply immediately and after a short delay
+        initializeBannerProtection();
+        setTimeout(initializeBannerProtection, 100);
+      })();
+    </script>
+  </body>
+</html>

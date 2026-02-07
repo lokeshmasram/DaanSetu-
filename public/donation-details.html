@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Donation Details - DaanSetu</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="dashboard-styles.css" />
+    <style>
+      .details-container {
+        min-height: 100vh;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem;
+      }
+
+      .details-content {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      .back-button {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 25px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        margin-bottom: 2rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .back-button:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: translateX(-5px);
+      }
+
+      .details-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        margin-bottom: 2rem;
+      }
+
+      .details-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 15px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        animation: slideIn 0.5s ease-out;
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .card-header {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .card-header h2 {
+        margin: 0;
+        font-size: 1.5rem;
+      }
+
+      .card-header i {
+        font-size: 1.75rem;
+      }
+
+      .card-body {
+        padding: 2rem;
+      }
+
+      .info-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 1rem 0;
+        border-bottom: 1px solid #e2e8f0;
+      }
+
+      .info-row:last-child {
+        border-bottom: none;
+      }
+
+      .info-label {
+        font-weight: 600;
+        color: #4a5568;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .info-value {
+        color: #2d3748;
+        font-weight: 500;
+        text-align: right;
+      }
+
+      .status-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        display: inline-block;
+      }
+
+      .status-badge.matched {
+        background: linear-gradient(135deg, #00b894, #00a085);
+        color: white;
+      }
+
+      .status-badge.completed {
+        background: linear-gradient(135deg, #6c757d, #5a6268);
+        color: white;
+      }
+
+      .ngo-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin-top: 1.5rem;
+      }
+
+      .stat-box {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        text-align: center;
+        transition: transform 0.3s ease;
+      }
+
+      .stat-box:hover {
+        transform: translateY(-5px);
+      }
+
+      .stat-number {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+      }
+
+      .stat-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+      }
+
+      .timeline {
+        position: relative;
+        padding-left: 2rem;
+      }
+
+      .timeline::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: linear-gradient(to bottom, #667eea, #764ba2);
+      }
+
+      .timeline-item {
+        position: relative;
+        margin-bottom: 2rem;
+      }
+
+      .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -2.5rem;
+        top: 0;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #667eea;
+        border: 3px solid white;
+        box-shadow: 0 0 0 3px #667eea;
+      }
+
+      .timeline-item.completed::before {
+        background: #00b894;
+        box-shadow: 0 0 0 3px #00b894;
+      }
+
+      .timeline-date {
+        font-size: 0.85rem;
+        color: #718096;
+        margin-bottom: 0.25rem;
+      }
+
+      .timeline-title {
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 0.25rem;
+      }
+
+      .timeline-desc {
+        font-size: 0.9rem;
+        color: #4a5568;
+      }
+
+      .contact-info {
+        background: #f7fafc;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-top: 1.5rem;
+      }
+
+      .contact-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.75rem 0;
+      }
+
+      .contact-icon {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+      }
+
+      .contact-details {
+        flex: 1;
+      }
+
+      .contact-label {
+        font-size: 0.85rem;
+        color: #718096;
+      }
+
+      .contact-value {
+        font-weight: 600;
+        color: #2d3748;
+      }
+
+      .loading-spinner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 400px;
+        color: white;
+      }
+
+      .loading-spinner i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .error-message {
+        background: rgba(255, 255, 255, 0.95);
+        padding: 2rem;
+        border-radius: 15px;
+        text-align: center;
+        color: #e53e3e;
+      }
+
+      .error-message i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+      }
+
+      @media (max-width: 768px) {
+        .details-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .ngo-stats {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="details-container">
+      <div class="details-content">
+        <button class="back-button" onclick="goBack()">
+          <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </button>
+
+        <div id="loadingSpinner" class="loading-spinner">
+          <i class="fas fa-spinner"></i>
+          <p>Loading donation details...</p>
+        </div>
+
+        <div id="errorMessage" class="error-message" style="display: none;">
+          <i class="fas fa-exclamation-triangle"></i>
+          <h2>Error Loading Details</h2>
+          <p id="errorText"></p>
+        </div>
+
+        <div id="detailsContent" style="display: none;">
+          <div class="details-grid">
+            <!-- Donation Details Card -->
+            <div class="details-card">
+              <div class="card-header">
+                <i class="fas fa-gift"></i>
+                <h2>Donation Details</h2>
+              </div>
+              <div class="card-body">
+                <div class="info-row">
+                  <span class="info-label">
+                    <i class="fas fa-tag"></i> Item Type
+                  </span>
+                  <span class="info-value" id="itemType">-</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">
+                    <i class="fas fa-boxes"></i> Quantity
+                  </span>
+                  <span class="info-value" id="quantity">-</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">
+                    <i class="fas fa-align-left"></i> Description
+                  </span>
+                  <span class="info-value" id="description">-</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">
+                    <i class="fas fa-map-marker-alt"></i> Pickup Location
+                  </span>
+                  <span class="info-value" id="pickupAddress">-</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">
+                    <i class="fas fa-info-circle"></i> Status
+                  </span>
+                  <span class="info-value">
+                    <span id="status" class="status-badge">-</span>
+                  </span>
+                </div>
+
+                <!-- Timeline -->
+                <h3 style="margin-top: 2rem; margin-bottom: 1rem; color: #2d3748;">
+                  <i class="fas fa-history"></i> Timeline
+                </h3>
+                <div class="timeline" id="timeline">
+                  <!-- Timeline items will be inserted here -->
+                </div>
+              </div>
+            </div>
+
+            <!-- NGO Details Card -->
+            <div class="details-card">
+              <div class="card-header">
+                <i class="fas fa-hands-helping"></i>
+                <h2>NGO Details</h2>
+              </div>
+              <div class="card-body">
+                <div class="info-row">
+                  <span class="info-label">
+                    <i class="fas fa-building"></i> Organization Name
+                  </span>
+                  <span class="info-value" id="ngoName">-</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">
+                    <i class="fas fa-id-card"></i> Registration ID
+                  </span>
+                  <span class="info-value" id="ngoRegistrationId">-</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">
+                    <i class="fas fa-map-marked-alt"></i> Address
+                  </span>
+                  <span class="info-value" id="ngoAddress">-</span>
+                </div>
+
+                <!-- Contact Information -->
+                <h3 style="margin-top: 2rem; margin-bottom: 1rem; color: #2d3748;">
+                  <i class="fas fa-address-book"></i> Contact Information
+                </h3>
+                <div class="contact-info">
+                  <div class="contact-item">
+                    <div class="contact-icon">
+                      <i class="fas fa-envelope"></i>
+                    </div>
+                    <div class="contact-details">
+                      <div class="contact-label">Email</div>
+                      <div class="contact-value" id="ngoEmail">-</div>
+                    </div>
+                  </div>
+                  <div class="contact-item">
+                    <div class="contact-icon">
+                      <i class="fas fa-phone"></i>
+                    </div>
+                    <div class="contact-details">
+                      <div class="contact-label">Phone</div>
+                      <div class="contact-value" id="ngoPhone">-</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- NGO Statistics -->
+                <h3 style="margin-top: 2rem; margin-bottom: 1rem; color: #2d3748;">
+                  <i class="fas fa-chart-bar"></i> NGO Performance
+                </h3>
+                <div class="ngo-stats">
+                  <div class="stat-box">
+                    <div class="stat-number" id="totalDonations">0</div>
+                    <div class="stat-label">Total Donations</div>
+                  </div>
+                  <div class="stat-box">
+                    <div class="stat-number" id="completedDonations">0</div>
+                    <div class="stat-label">Completed</div>
+                  </div>
+                  <div class="stat-box">
+                    <div class="stat-number" id="successRate">0%</div>
+                    <div class="stat-label">Success Rate</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Volunteer Details Card -->
+      <div class="details-card" id="volunteerCard" style="display: none;">
+        <div class="card-header">
+          <i class="fas fa-people-carrying"></i>
+          <h2>Volunteer Information</h2>
+        </div>
+        <div class="card-body">
+          <div class="info-row">
+            <span class="info-label">
+              <i class="fas fa-user"></i> Volunteer Name
+            </span>
+            <span class="info-value" id="volunteerName">-</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">
+              <i class="fas fa-briefcase"></i> Task Type
+            </span>
+            <span class="info-value" id="volunteerTaskType">-</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">
+              <i class="fas fa-map-marker-alt"></i> Task Location
+            </span>
+            <span class="info-value" id="volunteerTaskLocation">-</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">
+              <i class="fas fa-calendar"></i> Task Date
+            </span>
+            <span class="info-value" id="volunteerTaskDate">-</span>
+          </div>
+
+          <!-- Volunteer Contact Information -->
+          <h3 style="margin-top: 2rem; margin-bottom: 1rem; color: #2d3748;">
+            <i class="fas fa-address-book"></i> Volunteer Contact
+          </h3>
+          <div class="contact-info">
+            <div class="contact-item">
+              <div class="contact-icon">
+                <i class="fas fa-envelope"></i>
+              </div>
+              <div class="contact-details">
+                <div class="contact-label">Email</div>
+                <div class="contact-value" id="volunteerEmail">-</div>
+              </div>
+            </div>
+            <div class="contact-item">
+              <div class="contact-icon">
+                <i class="fas fa-phone"></i>
+              </div>
+              <div class="contact-details">
+                <div class="contact-label">Phone</div>
+                <div class="contact-value" id="volunteerPhone">-</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="/donation-details.js"></script>
+  </body>
+</html>

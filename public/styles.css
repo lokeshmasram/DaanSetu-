@@ -8,7 +8,7 @@
 body {
     font-family: 'Inter', sans-serif;
     line-height: 1.6;
-    color: #333;
+    color: #1e293b;
     background-color: #ffffff;
 }
 
@@ -38,7 +38,7 @@ body {
 }
 
 .logo {
-    color: #D2691E;
+    color: #2563eb;
     font-size: 1.8rem;
     font-weight: 700;
     text-decoration: none;
@@ -52,14 +52,14 @@ body {
 
 .nav-menu a {
     text-decoration: none;
-    color: #666;
+    color: #475569;
     font-weight: 500;
     transition: color 0.3s ease;
     cursor: pointer;
 }
 
 .nav-menu a:hover {
-    color: #D2691E;
+    color: #2563eb;
 }
 
 /* User Menu Styles */
@@ -87,7 +87,7 @@ body {
 
 .user-menu-content p:first-child {
     font-weight: 600;
-    color: #D2691E;
+    color: #2563eb;
     font-size: 1.1rem;
 }
 
@@ -208,7 +208,7 @@ body {
 }
 
 .form button:disabled:hover {
-    background-color: #D2691E;
+    background-color: #2563eb;
 }
 
 /* Hero Section */
@@ -266,23 +266,23 @@ body {
 }
 
 .btn-primary {
-    background-color: #D2691E;
+    background-color: #2563eb;
     color: white;
 }
 
 .btn-primary:hover {
-    background-color: #B8860B;
+    background-color: #1e40af;
     transform: translateY(-2px);
 }
 
 .btn-secondary {
     background-color: transparent;
-    color: #D2691E;
-    border: 2px solid #D2691E;
+    color: #2563eb;
+    border: 2px solid #2563eb;
 }
 
 .btn-secondary:hover {
-    background-color: #D2691E;
+    background-color: #2563eb;
     color: white;
     transform: translateY(-2px);
 }
@@ -295,7 +295,7 @@ body {
 .section-title {
     font-size: 2.5rem;
     font-weight: 700;
-    color: #D2691E;
+    color: #2563eb;
     text-align: center;
     margin-bottom: 2rem;
 }
@@ -332,7 +332,7 @@ body {
 .step-number {
     width: 60px;
     height: 60px;
-    background-color: #D2691E;
+    background-color: #2563eb;
     color: white;
     border-radius: 50%;
     display: flex;
@@ -346,7 +346,7 @@ body {
 .step-title {
     font-size: 1.3rem;
     font-weight: 600;
-    color: #D2691E;
+    color: #2563eb;
     margin-bottom: 1rem;
 }
 
@@ -382,7 +382,7 @@ body {
 
 .feature-icon {
     font-size: 3rem;
-    color: #D2691E;
+    color: #2563eb;
     margin-bottom: 1rem;
 }
 
@@ -428,7 +428,7 @@ body {
 }
 
 .close:hover {
-    color: #D2691E;
+    color: #2563eb;
 }
 
 /* Forms */
@@ -462,7 +462,8 @@ body {
 .form-group select:focus,
 .form-group textarea:focus {
     outline: none;
-    border-color: #D2691E;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 .form-group textarea {
@@ -494,11 +495,11 @@ body {
 
 .toggle-password:focus {
     outline: none;
-    color: #D2691E;
+    color: #2563eb;
 }
 
 .toggle-password:hover {
-    color: #D2691E;
+    color: #2563eb;
 }
 
 /* Responsive Design */

@@ -2,6 +2,7 @@ const express = require("express");
 const jwt = require("jsonwebtoken");
 const { db } = require("../config/firebase");
 const { getDistance } = require("geolib");
+const { sendDonationAcceptedEmail } = require("../utils/email");
 
 const router = express.Router();
 
@@ -66,7 +67,7 @@ router.post("/list", authenticateToken, async (req, res) => {
       quantity,
       description,
       pickupAddress,
-      status: "available",
+      status: "pending",
       createdAt: new Date(),
       matchedNgoId: null,
       completedAt: null,
@@ -147,18 +148,18 @@ router.post("/list", authenticateToken, async (req, res) => {
   }
 });
 
-// Get available donations for NGOs
+// Get pending donations for NGOs (donations waiting for acceptance)
 router.get("/available", authenticateToken, async (req, res) => {
   try {
     if (req.user.userType !== "ngo") {
       return res.status(403).json({
         success: false,
-        message: "Only NGOs can access available donations",
+        message: "Only NGOs can access pending donations",
       });
     }
 
     const ngoId = req.user.uid;
-    console.log("Fetching available donations for NGO:", ngoId);
+    console.log("Fetching pending donations for NGO:", ngoId);
 
     const ngoDoc = await db.collection("users").doc(ngoId).get();
     const ngoData = ngoDoc.data();
@@ -171,20 +172,21 @@ router.get("/available", authenticateToken, async (req, res) => {
       });
     }
 
-    // Get all available donations
+    // Get all donations that are pending OR available (waiting for NGO acceptance)
     const donationsSnapshot = await db
       .collection("donations")
-      .where("status", "==", "available")
+      .where("status", "in", ["pending", "available"])
       .get();
 
-    console.log("Found available donations:", donationsSnapshot.size);
+    console.log("Found pending/available donations:", donationsSnapshot.size);
 
-    const availableDonations = [];
+    const pendingDonations = [];
     const maxDistance = 15000; // 15km
 
     donationsSnapshot.forEach((doc) => {
       const donationData = doc.data();
-      if (donationData.coordinates) {
+      // Only show donations that haven't been matched to an NGO yet
+      if (donationData.coordinates && !donationData.matchedNgoId) {
         try {
           const distance = getDistance(
             {
@@ -198,7 +200,7 @@ router.get("/available", authenticateToken, async (req, res) => {
           );
 
           if (distance <= maxDistance) {
-            availableDonations.push({
+            pendingDonations.push({
               id: doc.id,
               ...donationData,
               distance: distance / 1000, // Convert to km
@@ -215,18 +217,18 @@ router.get("/available", authenticateToken, async (req, res) => {
     });
 
     // Sort by distance
-    availableDonations.sort((a, b) => a.distance - b.distance);
+    pendingDonations.sort((a, b) => a.distance - b.distance);
 
-    console.log("Returning available donations:", availableDonations.length);
+    console.log("Returning pending donations:", pendingDonations.length);
     res.json({
       success: true,
-      donations: availableDonations,
+      donations: pendingDonations,
     });
   } catch (error) {
-    console.error("Get available donations error:", error);
+    console.error("Get pending donations error:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to get available donations",
+      message: "Failed to get pending donations",
       error: error.message,
     });
   }
@@ -235,6 +237,7 @@ router.get("/available", authenticateToken, async (req, res) => {
 // Accept a donation (NGO action)
 router.post("/:donationId/accept", authenticateToken, async (req, res) => {
   try {
+    // 1. Ensure only NGOs can accept donation
     if (req.user.userType !== "ngo") {
       return res.status(403).json({
         success: false,
@@ -245,7 +248,28 @@ router.post("/:donationId/accept", authenticateToken, async (req, res) => {
     const { donationId } = req.params;
     const ngoId = req.user.uid;
 
-    // Check if donation is still available
+    console.log("NGO attempting to accept donation:", { donationId, ngoId });
+
+    // 2. Verify NGO is verified
+    const ngoDoc = await db.collection("users").doc(ngoId).get();
+    
+    if (!ngoDoc.exists) {
+      return res.status(404).json({
+        success: false,
+        message: "NGO not found",
+      });
+    }
+
+    const ngoData = ngoDoc.data();
+
+    if (ngoData.status !== "verified") {
+      return res.status(403).json({
+        success: false,
+        message: "Only verified NGOs can accept donations",
+      });
+    }
+
+    // 3. Check if donation exists and is in pending state
     const donationRef = db.collection("donations").doc(donationId);
     const donationDoc = await donationRef.get();
 
@@ -258,36 +282,78 @@ router.post("/:donationId/accept", authenticateToken, async (req, res) => {
 
     const donationData = donationDoc.data();
 
-    if (donationData.status !== "available") {
+    // 4. Ensure donation is in "pending" state
+    if (donationData.status !== "pending") {
       return res.status(400).json({
         success: false,
-        message: "Donation is no longer available",
+        message: `Donation cannot be accepted. Current status: ${donationData.status}`,
       });
     }
 
-    // Update donation status
+    // 5. Update donation status to "accepted"
     await donationRef.update({
-      status: "matched",
+      status: "accepted",
       matchedNgoId: ngoId,
-      matchedAt: new Date(),
+      acceptedAt: new Date(),
     });
 
-    // Get NGO details
-    const ngoDoc = await db.collection("users").doc(ngoId).get();
-    const ngoData = ngoDoc.data();
+    console.log("Donation status updated to accepted:", donationId);
 
-    // Notify donor
+    // 6. Fetch donor details from users collection
+    const donorDoc = await db.collection("users").doc(donationData.donorId).get();
+    
+    if (!donorDoc.exists) {
+      console.error("Donor not found:", donationData.donorId);
+      return res.status(404).json({
+        success: false,
+        message: "Donor not found",
+      });
+    }
+
+    const donorData = donorDoc.data();
+
+    // 7. Emit Socket.IO event to donor
     const io = req.app.get("io");
-    io.to(`donor-${donationData.donorId}`).emit("donation-accepted", {
+    io.to(donationData.donorId).emit("donationAccepted", {
       donationId,
       ngoName: ngoData.name,
-      ngoPhone: ngoData.phone,
-      ngoAddress: ngoData.address,
+      message: `Your donation has been accepted by ${ngoData.name}`,
     });
 
+    console.log("Socket.IO notification sent to donor:", donationData.donorId);
+
+    // 8. Send email notification to donor
+    try {
+      await sendDonationAcceptedEmail(
+        donorData.email,
+        donorData.name,
+        {
+          donationId,
+          itemType: donationData.itemType,
+          quantity: donationData.quantity,
+        },
+        {
+          ngoName: ngoData.name,
+          ngoPhone: ngoData.phone,
+          ngoAddress: ngoData.address,
+        }
+      );
+      console.log("Email notification sent to donor:", donorData.email);
+    } catch (emailError) {
+      // Log email error but don't fail the request
+      console.error("Failed to send email notification:", emailError);
+    }
+
+    // 9. Return structured JSON response
     res.json({
       success: true,
       message: "Donation accepted successfully",
+      data: {
+        donationId,
+        matchedNgoId: ngoId,
+        acceptedAt: new Date().toISOString(),
+        ngoName: ngoData.name,
+      },
     });
   } catch (error) {
     console.error("Accept donation error:", error);
@@ -332,7 +398,7 @@ router.post("/:donationId/picked-up", authenticateToken, async (req, res) => {
       });
     }
 
-    if (donationData.status !== "matched") {
+    if (donationData.status !== "accepted") {
       return res.status(400).json({
         success: false,
         message:
@@ -488,7 +554,7 @@ router.post("/:donationId/complete", authenticateToken, async (req, res) => {
   }
 });
 
-// Cancel a donation (only available donations can be cancelled)
+// Cancel a donation (only unmatched donations can be cancelled)
 router.post("/:donationId/cancel", authenticateToken, async (req, res) => {
   try {
     const { donationId } = req.params;
@@ -517,11 +583,20 @@ router.post("/:donationId/cancel", authenticateToken, async (req, res) => {
       });
     }
 
-    // Check if donation is still available (not accepted yet)
-    if (donation.status !== "available") {
+    // Check if donation can be cancelled
+    // Can cancel if: pending, available without NGO match, or no NGO match and not already completed/cancelled/accepted
+    const canCancel = 
+      donation.status === 'pending' || 
+      (donation.status === 'available' && !donation.matchedNgoId) ||
+      (!donation.matchedNgoId && 
+       donation.status !== 'completed' && 
+       donation.status !== 'cancelled' && 
+       donation.status !== 'accepted');
+    
+    if (!canCancel) {
       return res.status(400).json({
         success: false,
-        message: `Cannot cancel donation with status: ${donation.status}. Only available donations can be cancelled.`,
+        message: `Cannot cancel donation with status: ${donation.status}${donation.matchedNgoId ? ' (already matched to NGO)' : ''}. Only unmatched donations can be cancelled.`,
       });
     }
 
@@ -686,6 +761,32 @@ router.get("/history", authenticateToken, async (req, res) => {
     }
 
     console.log("Returning donations:", donations.length);
+    
+    // Enrich donations with NGO names for donors
+    if (userType === "donor") {
+      console.log("Enriching donations with NGO names...");
+      for (let donation of donations) {
+        if (donation.matchedNgoId && !donation.ngoName) {
+          try {
+            const ngoDoc = await db.collection("users").doc(donation.matchedNgoId).get();
+            if (ngoDoc.exists) {
+              donation.ngoName = ngoDoc.data().name || "Unknown NGO";
+              console.log(`  ✅ ${donation.id.substring(0, 12)}: ${donation.ngoName}`);
+            } else {
+              donation.ngoName = "Unknown NGO";
+              console.log(`  ❌ ${donation.id.substring(0, 12)}: NGO not found`);
+            }
+          } catch (err) {
+            console.error("Error fetching NGO name:", err);
+            donation.ngoName = "Unknown NGO";
+          }
+        } else if (!donation.ngoName && donation.matchedNgoId) {
+          donation.ngoName = "Unknown NGO";
+        }
+      }
+      console.log("NGO names enriched");
+    }
+    
     res.json({
       success: true,
       donations,

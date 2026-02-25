@@ -115,7 +115,51 @@ const sendResetEmail = async (email, resetLink) => {
   return sendEmail(emailOptions);
 };
 
+// Function to send donation acceptance notification email
+const sendDonationAcceptedEmail = async (donorEmail, donorName, donationDetails, ngoDetails) => {
+  const { donationId, itemType, quantity } = donationDetails;
+  const { ngoName, ngoPhone, ngoAddress } = ngoDetails;
+
+  const emailText = `Dear ${donorName},\n\nGreat news! Your donation has been accepted by an NGO.\n\nDonation Details:\n- Donation ID: ${donationId}\n- Item Type: ${itemType}\n- Quantity: ${quantity}\n\nAccepted by:\n- NGO Name: ${ngoName}\n- Contact: ${ngoPhone}\n- Address: ${ngoAddress}\n\nThe NGO will coordinate with you for pickup arrangements.\n\nThank you for your generosity!\n\nBest regards,\nDaanSetu Team`;
+
+  const emailOptions = {
+    from: `"DaanSetu" <${process.env.EMAIL_USERNAME || 'noreply@daansetu.org'}>`,
+    to: donorEmail,
+    subject: 'Your Donation Has Been Accepted!',
+    text: emailText,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+        <h2 style="color: #4a90e2;">🎉 Donation Accepted!</h2>
+        <p>Dear ${donorName},</p>
+        <p>Great news! Your donation has been accepted by an NGO.</p>
+        
+        <div style="background-color: #f5f5f5; padding: 15px; margin: 20px 0; border-radius: 5px;">
+          <h3 style="margin-top: 0; color: #333;">Donation Details</h3>
+          <p style="margin: 5px 0;"><strong>Donation ID:</strong> ${donationId}</p>
+          <p style="margin: 5px 0;"><strong>Item Type:</strong> ${itemType}</p>
+          <p style="margin: 5px 0;"><strong>Quantity:</strong> ${quantity}</p>
+        </div>
+
+        <div style="background-color: #e8f4f8; padding: 15px; margin: 20px 0; border-radius: 5px;">
+          <h3 style="margin-top: 0; color: #333;">Accepted By</h3>
+          <p style="margin: 5px 0;"><strong>NGO Name:</strong> ${ngoName}</p>
+          <p style="margin: 5px 0;"><strong>Contact:</strong> ${ngoPhone}</p>
+          <p style="margin: 5px 0;"><strong>Address:</strong> ${ngoAddress}</p>
+        </div>
+
+        <p>The NGO will coordinate with you for pickup arrangements.</p>
+        <p>Thank you for your generosity! Your contribution makes a real difference.</p>
+        
+        <p>Best regards,<br>DaanSetu Team</p>
+      </div>
+    `
+  };
+
+  return sendEmail(emailOptions);
+};
+
 module.exports = {
   sendOtpEmail,
-  sendResetEmail
+  sendResetEmail,
+  sendDonationAcceptedEmail
 };

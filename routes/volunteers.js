@@ -20,6 +20,11 @@ const authenticateToken = (req, res, next) => {
       token,
       process.env.JWT_SECRET || "daansetu-secret-key-2024"
     );
+    console.log("🔐 Authenticated user:", {
+      uid: decoded.uid,
+      email: decoded.email,
+      userType: decoded.userType
+    });
     req.user = decoded;
     next();
   } catch (error) {
@@ -77,25 +82,55 @@ router.get("/tasks", authenticateToken, async (req, res) => {
       });
     }
 
-    const tasksSnapshot = await db
+    const volunteerId = req.user.uid;
+    console.log("\n🔍 GET /tasks - Volunteer:", volunteerId);
+
+    // Get available tasks (not assigned to anyone yet)
+    const availableTasksSnapshot = await db
       .collection("volunteer_tasks")
       .where("status", "==", "available")
       .get();
 
+    console.log("📋 Available tasks:", availableTasksSnapshot.size);
+
+    // Get tasks assigned to this volunteer
+    const myTasksSnapshot = await db
+      .collection("volunteer_tasks")
+      .where("assignedVolunteerId", "==", volunteerId)
+      .get();
+
+    console.log("📋 Tasks assigned to me:", myTasksSnapshot.size);
+
     const tasks = [];
-    tasksSnapshot.forEach((doc) => {
+    
+    // Add available tasks
+    availableTasksSnapshot.forEach((doc) => {
       tasks.push({
         id: doc.id,
         ...doc.data(),
       });
+      console.log(`  ✅ Available: ${doc.id} - ${doc.data().title}`);
     });
+
+    // Add tasks assigned to this volunteer (if not already in list)
+    myTasksSnapshot.forEach((doc) => {
+      if (!tasks.find(t => t.id === doc.id)) {
+        tasks.push({
+          id: doc.id,
+          ...doc.data(),
+        });
+        console.log(`  ✅ Assigned to me: ${doc.id} - ${doc.data().title}`);
+      }
+    });
+
+    console.log(`📦 Total tasks returned: ${tasks.length}\n`);
 
     res.json({
       success: true,
       tasks,
     });
   } catch (error) {
-    console.error("Get volunteer tasks error:", error);
+    console.error("❌ Get volunteer tasks error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to get volunteer tasks",
@@ -241,6 +276,92 @@ router.get("/tasks/:taskId", authenticateToken, async (req, res) => {
   }
 });
 
+// Get volunteer's task history (must come BEFORE /:volunteerId route)
+router.get("/history", authenticateToken, async (req, res) => {
+  try {
+    if (req.user.userType !== "volunteer") {
+      return res.status(403).json({
+        success: false,
+        message: "Only volunteers can access task history",
+      });
+    }
+
+    const volunteerId = req.user.uid;
+    console.log("\n📜 GET /history - Volunteer:", volunteerId);
+
+    let tasks = [];
+
+    // Using a try-catch block to handle the case where the composite index doesn't exist
+    try {
+      const tasksSnapshot = await db
+        .collection("volunteer_tasks")
+        .where("assignedVolunteerId", "==", volunteerId)
+        .orderBy("assignedAt", "desc")
+        .get();
+
+      console.log("📋 Tasks found (with ordering):", tasksSnapshot.size);
+
+      tasksSnapshot.forEach((doc) => {
+        tasks.push({
+          id: doc.id,
+          ...doc.data(),
+        });
+        console.log(`  ✅ Task: ${doc.id} - ${doc.data().title} (${doc.data().status})`);
+      });
+    } catch (queryError) {
+      // If the composite index doesn't exist, fall back to a query without ordering
+      if (queryError.code === 9) {
+        // FAILED_PRECONDITION
+        console.warn(
+          "⚠️ Composite index not found for volunteer tasks, falling back to unordered query"
+        );
+        const tasksSnapshot = await db
+          .collection("volunteer_tasks")
+          .where("assignedVolunteerId", "==", volunteerId)
+          .get();
+
+        console.log("📋 Tasks found (without ordering):", tasksSnapshot.size);
+
+        // Sort manually in memory
+        const tasksArray = [];
+        tasksSnapshot.forEach((doc) => {
+          tasksArray.push({
+            id: doc.id,
+            ...doc.data(),
+          });
+          console.log(`  ✅ Task: ${doc.id} - ${doc.data().title} (${doc.data().status})`);
+        });
+
+        // Sort by assignedAt manually
+        tasksArray.sort((a, b) => {
+          const dateA = a.assignedAt ? new Date(a.assignedAt) : new Date(0);
+          const dateB = b.assignedAt ? new Date(b.assignedAt) : new Date(0);
+          return dateB - dateA;
+        });
+
+        tasks = tasksArray;
+      } else {
+        // Re-throw if it's a different error
+        throw queryError;
+      }
+    }
+
+    console.log(`📦 Total tasks returned: ${tasks.length}\n`);
+
+    res.json({
+      success: true,
+      tasks,
+    });
+  } catch (error) {
+    console.error("❌ Get volunteer history error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get volunteer history",
+      error: error.message,
+    });
+  }
+});
+
 // Get volunteer details by ID (must come AFTER /donation-tasks and /tasks routes)
 router.get("/:volunteerId", authenticateToken, async (req, res) => {
   try {
@@ -302,11 +423,16 @@ router.post("/tasks/:taskId/accept", authenticateToken, async (req, res) => {
     const { taskId } = req.params;
     const volunteerId = req.user.uid;
 
+    console.log("\n🎯 POST /tasks/:taskId/accept");
+    console.log("   Task ID:", taskId);
+    console.log("   Volunteer ID:", volunteerId);
+
     // Check if task is still available
     const taskRef = db.collection("volunteer_tasks").doc(taskId);
     const taskDoc = await taskRef.get();
 
     if (!taskDoc.exists) {
+      console.log("   ❌ Task not found");
       return res.status(404).json({
         success: false,
         message: "Task not found",
@@ -314,8 +440,10 @@ router.post("/tasks/:taskId/accept", authenticateToken, async (req, res) => {
     }
 
     const taskData = taskDoc.data();
+    console.log("   Task status:", taskData.status);
 
     if (taskData.status !== "available") {
+      console.log("   ❌ Task is no longer available");
       return res.status(400).json({
         success: false,
         message: "Task is no longer available",
@@ -329,6 +457,10 @@ router.post("/tasks/:taskId/accept", authenticateToken, async (req, res) => {
       assignedAt: new Date(),
     });
 
+    console.log("   ✅ Task updated successfully");
+    console.log("      New status: assigned");
+    console.log("      Assigned to:", volunteerId);
+
     // Notify the NGO that created the task
     const io = req.app.get("io");
     io.to(`ngo-${taskData.ngoId}`).emit("task-assigned", {
@@ -337,12 +469,14 @@ router.post("/tasks/:taskId/accept", authenticateToken, async (req, res) => {
       message: "A volunteer has accepted your task",
     });
 
+    console.log("   📡 Notified NGO:", taskData.ngoId, "\n");
+
     res.json({
       success: true,
       message: "Task accepted successfully",
     });
   } catch (error) {
-    console.error("Accept task error:", error);
+    console.error("❌ Accept task error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to accept task",
@@ -481,83 +615,6 @@ router.post("/tasks/:taskId/complete", authenticateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to complete task",
-      error: error.message,
-    });
-  }
-});
-
-// Get volunteer's task history
-router.get("/history", authenticateToken, async (req, res) => {
-  try {
-    if (req.user.userType !== "volunteer") {
-      return res.status(403).json({
-        success: false,
-        message: "Only volunteers can access task history",
-      });
-    }
-
-    const volunteerId = req.user.uid;
-
-    let tasks = [];
-
-    // Using a try-catch block to handle the case where the composite index doesn't exist
-    try {
-      const tasksSnapshot = await db
-        .collection("volunteer_tasks")
-        .where("assignedVolunteerId", "==", volunteerId)
-        .orderBy("assignedAt", "desc")
-        .get();
-
-      tasksSnapshot.forEach((doc) => {
-        tasks.push({
-          id: doc.id,
-          ...doc.data(),
-        });
-      });
-    } catch (queryError) {
-      // If the composite index doesn't exist, fall back to a query without ordering
-      if (queryError.code === 9) {
-        // FAILED_PRECONDITION
-        console.warn(
-          "Composite index not found for volunteer tasks, falling back to unordered query"
-        );
-        const tasksSnapshot = await db
-          .collection("volunteer_tasks")
-          .where("assignedVolunteerId", "==", volunteerId)
-          .get();
-
-        // Sort manually in memory
-        const tasksArray = [];
-        tasksSnapshot.forEach((doc) => {
-          tasksArray.push({
-            id: doc.id,
-            ...doc.data(),
-          });
-        });
-
-        // Sort by assignedAt manually
-        tasksArray.sort((a, b) => {
-          const dateA = a.assignedAt ? new Date(a.assignedAt) : new Date(0);
-          const dateB = b.assignedAt ? new Date(b.assignedAt) : new Date(0);
-          return dateB - dateA;
-        });
-
-        tasks = tasksArray;
-      } else {
-        // Re-throw if it's a different error
-        throw queryError;
-      }
-    }
-
-    res.json({
-      success: true,
-      tasks,
-    });
-  } catch (error) {
-    console.error("Get volunteer history error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to get volunteer history",
       error: error.message,
     });
   }

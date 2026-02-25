@@ -58,27 +58,27 @@
             </div>
             <div class="card-content">
               <div class="stats-grid">
-                <div class="stat-item stat-clickable" onclick="window.testStatButton('total')">
+                <div class="stat-item stat-clickable" onclick="window.viewDonationDetailsByCategory('total')">
                   <div class="stat-number" id="totalDonations">0</div>
                   <div class="stat-label">Total Donations</div>
                   <div class="stat-hint">Click to view details</div>
                 </div>
-                <div class="stat-item stat-clickable" onclick="window.testStatButton('completed')">
+                <div class="stat-item stat-clickable" onclick="window.viewDonationDetailsByCategory('completed')">
                   <div class="stat-number" id="completedDonations">0</div>
                   <div class="stat-label">Completed</div>
                   <div class="stat-hint">Click to view details</div>
                 </div>
-                <div class="stat-item stat-clickable" onclick="window.testStatButton('pending')">
+                <div class="stat-item stat-clickable" onclick="window.viewDonationDetailsByCategory('pending')">
                   <div class="stat-number" id="pendingDonations">0</div>
                   <div class="stat-label">Pending</div>
                   <div class="stat-hint">Click to view details</div>
                 </div>
-                <div class="stat-item stat-clickable" onclick="window.testStatButton('cancelled')">
+                <div class="stat-item stat-clickable" onclick="window.viewDonationDetailsByCategory('cancelled')">
                   <div class="stat-number" id="cancelledDonations">0</div>
                   <div class="stat-label">Cancelled</div>
                   <div class="stat-hint">Click to view details</div>
                 </div>
-                <div class="stat-item stat-clickable" onclick="window.testStatButton('ngos-helped')">
+                <div class="stat-item stat-clickable" onclick="window.viewDonationDetailsByCategory('ngos-helped')">
                   <div class="stat-number" id="ngosHelped">0</div>
                   <div class="stat-label">NGOs Helped</div>
                   <div class="stat-hint">Click to view details</div>
@@ -191,8 +191,8 @@
             <input type="text" id="quantity" name="quantity" placeholder="e.g., 5 items, 10 kg" required />
           </div>
           <div class="form-group">
-            <label for="location">Location</label>
-            <input type="text" id="location" name="location" required />
+            <label for="location">Location (Click on map or enter coordinates)</label>
+            <input type="text" id="location" name="location" placeholder="e.g., 20.7459, 78.6028" required />
           </div>
           <div class="form-group">
             <label>Select Location on Map</label>
@@ -246,6 +246,8 @@
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
+    <!-- Simplified stats handler - loaded first -->
+    <script src="/donor-stats-simplified.js"></script>
     <!-- Google Maps loader: set localStorage G_MAPS_KEY for development
          Example (in browser console):
            localStorage.setItem('G_MAPS_KEY', 'YOUR_API_KEY'); location.reload();

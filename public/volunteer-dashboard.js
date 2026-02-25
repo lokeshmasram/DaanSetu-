@@ -85,6 +85,7 @@ async function loadVolunteerData() {
 // Load available tasks
 async function loadAvailableTasks() {
   try {
+    console.log("📋 Loading available tasks...");
     const response = await fetch("/api/volunteers/tasks", {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -93,12 +94,15 @@ async function loadAvailableTasks() {
 
     if (response.ok) {
       const result = await response.json();
+      console.log("📦 Tasks API returned:", result.tasks?.length || 0, "total tasks");
       const availableTasks = result.tasks
         ? result.tasks.filter((task) => task.status === "available")
         : [];
+      console.log("✅ Filtered available tasks:", availableTasks.length, "tasks");
       renderAvailableTasks(availableTasks);
     } else {
       const error = await response.json();
+      console.error("❌ Failed to load available tasks:", error);
       showNotification(
         error.message || "Failed to load available tasks",
         "error"
@@ -107,7 +111,7 @@ async function loadAvailableTasks() {
         '<div class="error">Failed to load available tasks</div>';
     }
   } catch (error) {
-    console.error("Failed to load available tasks:", error);
+    console.error("❌ Exception loading available tasks:", error);
     showNotification("Failed to load available tasks", "error");
     availableTasksElement.innerHTML =
       '<div class="error">Failed to load available tasks</div>';
@@ -117,6 +121,7 @@ async function loadAvailableTasks() {
 // Load my tasks
 async function loadMyTasks() {
   try {
+    console.log("📋 Loading my tasks...");
     const response = await fetch("/api/volunteers/tasks", {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -125,20 +130,24 @@ async function loadMyTasks() {
 
     if (response.ok) {
       const result = await response.json();
+      console.log("📦 Tasks API returned:", result.tasks?.length || 0, "tasks");
       const myTasks = result.tasks
         ? result.tasks.filter(
             (task) => task.status === "assigned" || task.status === "completed"
           )
         : [];
+      console.log("✅ Filtered my tasks:", myTasks.length, "tasks");
+      console.log("📊 Task statuses:", myTasks.map(t => t.status));
       renderMyTasks(myTasks);
     } else {
       const error = await response.json();
+      console.error("❌ Failed to load my tasks:", error);
       showNotification(error.message || "Failed to load my tasks", "error");
       myTasksElement.innerHTML =
         '<div class="error">Failed to load my tasks</div>';
     }
   } catch (error) {
-    console.error("Failed to load my tasks:", error);
+    console.error("❌ Exception loading my tasks:", error);
     showNotification("Failed to load my tasks", "error");
     myTasksElement.innerHTML =
       '<div class="error">Failed to load my tasks</div>';
@@ -148,6 +157,7 @@ async function loadMyTasks() {
 // Load task history
 async function loadTaskHistory() {
   try {
+    console.log("📜 Loading task history...");
     const response = await fetch("/api/volunteers/history", {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -156,16 +166,19 @@ async function loadTaskHistory() {
 
     if (response.ok) {
       const result = await response.json();
+      console.log("📦 History API returned:", result.tasks?.length || 0, "tasks");
       const history = result.tasks || [];
+      console.log("✅ Task history:", history.map(t => ({ id: t.id, title: t.title, status: t.status })));
       renderTaskHistory(history);
     } else {
       const error = await response.json();
+      console.error("❌ Failed to load task history:", error);
       showNotification(error.message || "Failed to load task history", "error");
       taskHistoryElement.innerHTML =
         '<div class="error">Failed to load task history</div>';
     }
   } catch (error) {
-    console.error("Failed to load task history:", error);
+    console.error("❌ Exception loading task history:", error);
     showNotification("Failed to load task history", "error");
     taskHistoryElement.innerHTML =
       '<div class="error">Failed to load task history</div>';
@@ -175,6 +188,7 @@ async function loadTaskHistory() {
 // Update statistics
 async function updateStatistics() {
   try {
+    console.log("📊 Updating statistics...");
     const response = await fetch("/api/volunteers/history", {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -184,6 +198,7 @@ async function updateStatistics() {
     if (response.ok) {
       const result = await response.json();
       const history = result.tasks || [];
+      console.log("📦 Statistics API returned:", history.length, "tasks");
 
       const totalTasks = history.length;
       const completedTasks = history.filter(
@@ -198,16 +213,20 @@ async function updateStatistics() {
           .map((t) => t.ngoName)
       ).size;
 
+      console.log("📊 Stats:", { totalTasks, completedTasks, activeTasks, ngosHelped });
+
       totalTasksElement.textContent = totalTasks;
       completedTasksElement.textContent = completedTasks;
       activeTasksElement.textContent = activeTasks;
       ngosHelpedElement.textContent = ngosHelped;
+      console.log("✅ Statistics updated in DOM");
     } else {
       const error = await response.json();
+      console.error("❌ Failed to update statistics:", error);
       showNotification(error.message || "Failed to update statistics", "error");
     }
   } catch (error) {
-    console.error("Failed to update statistics:", error);
+    console.error("❌ Exception updating statistics:", error);
     showNotification("Failed to update statistics", "error");
   }
 }
@@ -258,7 +277,10 @@ function renderAvailableTasks(tasks) {
 
 // Render my tasks
 function renderMyTasks(tasks) {
+  console.log("🎨 Rendering my tasks:", tasks.length, "tasks");
+  
   if (tasks.length === 0) {
+    console.log("⚠️ No tasks to display");
     myTasksElement.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-clipboard"></i>
@@ -298,16 +320,16 @@ function renderMyTasks(tasks) {
       )}</span>
             </div>
             <div class="task-details">
-                <p><strong>Type:</strong> ${task.type}</p>
-                <p><strong>Location:</strong> ${task.location}</p>
+                <p><strong>Type:</strong> ${task.type || 'N/A'}</p>
+                <p><strong>Location:</strong> ${task.location || 'N/A'}</p>
                 <p><strong>Date:</strong> ${
-                  task.date ? new Date(task.date).toLocaleDateString() : "N/A"
+                  task.date ? new Date(task.date._seconds ? task.date._seconds * 1000 : task.date).toLocaleDateString() : "N/A"
                 }</p>
                 <p><strong>NGO:</strong> ${task.ngoName || "N/A"}</p>
                 ${
                   task.assignedAt
                     ? `<p><strong>Accepted:</strong> ${new Date(
-                        task.assignedAt
+                        task.assignedAt._seconds ? task.assignedAt._seconds * 1000 : task.assignedAt
                       ).toLocaleDateString()}</p>`
                     : ""
                 }
@@ -345,11 +367,16 @@ function renderMyTasks(tasks) {
     `;
     })
     .join("");
+    
+  console.log("✅ My tasks rendered successfully");
 }
 
 // Render task history
 function renderTaskHistory(tasks) {
+  console.log("🎨 Rendering task history:", tasks.length, "tasks");
+  
   if (tasks.length === 0) {
+    console.log("⚠️ No tasks to display");
     taskHistoryElement.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-history"></i>
@@ -376,6 +403,7 @@ function renderTaskHistory(tasks) {
 
   // Show only the 5 most recent tasks
   const recentTasks = sortedTasks.slice(0, 5);
+  console.log("📊 Showing", recentTasks.length, "recent tasks");
 
   taskHistoryElement.innerHTML = recentTasks
     .map(
@@ -390,20 +418,20 @@ function renderTaskHistory(tasks) {
       )}</span>
             </div>
             <div class="task-details">
-                <p><strong>Type:</strong> ${task.type}</p>
-                <p><strong>Location:</strong> ${task.location}</p>
+                <p><strong>Type:</strong> ${task.type || 'N/A'}</p>
+                <p><strong>Location:</strong> ${task.location || 'N/A'}</p>
                 <p><strong>NGO:</strong> ${task.ngoName || "N/A"}</p>
                 ${
                   task.assignedAt
                     ? `<p><strong>Accepted:</strong> ${new Date(
-                        task.assignedAt
+                        task.assignedAt._seconds ? task.assignedAt._seconds * 1000 : task.assignedAt
                       ).toLocaleDateString()}</p>`
                     : ""
                 }
                 ${
                   task.status === "completed" && task.completedAt
                     ? `<p><strong>Completed:</strong> ${new Date(
-                        task.completedAt
+                        task.completedAt._seconds ? task.completedAt._seconds * 1000 : task.completedAt
                       ).toLocaleDateString()}</p>`
                     : ""
                 }
@@ -412,6 +440,8 @@ function renderTaskHistory(tasks) {
     `
     )
     .join("");
+    
+  console.log("✅ Task history rendered successfully");
 }
 
 // Get status text
@@ -562,6 +592,7 @@ async function showTaskDetails(taskId) {
 // Accept task
 async function acceptTask(taskId) {
   try {
+    console.log("🎯 Accepting task:", taskId);
     const response = await fetch(`/api/volunteers/tasks/${taskId}/accept`, {
       method: "POST",
       headers: {
@@ -572,19 +603,26 @@ async function acceptTask(taskId) {
 
     if (response.ok) {
       const result = await response.json();
+      console.log("✅ Task accepted successfully:", result);
       showNotification(
         result.message || "Task accepted successfully!",
         "success"
       );
+      
+      console.log("🔄 Reloading available tasks...");
       await loadAvailableTasks();
+      console.log("🔄 Reloading my tasks...");
       await loadMyTasks();
+      console.log("🔄 Updating statistics...");
       await updateStatistics();
+      console.log("✅ All sections updated");
     } else {
       const error = await response.json();
+      console.error("❌ Failed to accept task:", error);
       showNotification(error.message || "Failed to accept task", "error");
     }
   } catch (error) {
-    console.error("Failed to accept task:", error);
+    console.error("❌ Exception accepting task:", error);
     showNotification("Failed to accept task", "error");
   }
 }

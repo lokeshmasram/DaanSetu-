@@ -150,14 +150,14 @@ async function loadData() {
 
     // Filter based on view type
     if (viewType === 'accepted') {
-      // All accepted donations (matched or completed)
-      allData = donations.filter(d => d.status === 'matched' || d.status === 'completed');
+      // All accepted donations (accepted or completed)
+      allData = donations.filter(d => d.status === 'accepted' || d.status === 'completed');
     } else if (viewType === 'completed') {
       // Only completed donations
       allData = donations.filter(d => d.status === 'completed');
     } else if (viewType === 'pending') {
-      // Only matched (pending pickup) donations
-      allData = donations.filter(d => d.status === 'matched');
+      // Only accepted (pending pickup) donations
+      allData = donations.filter(d => d.status === 'accepted');
     }
 
     filteredData = [...allData];

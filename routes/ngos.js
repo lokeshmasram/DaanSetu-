@@ -172,6 +172,7 @@ router.get("/status", authenticateToken, async (req, res) => {
         phone: ngoData.phone,
         address: ngoData.address,
         registrationId: ngoData.registrationId,
+        coordinates: ngoData.coordinates || null,
         verificationDocuments: ngoData.verificationDocuments || [],
         adminNotes: ngoData.adminNotes || "",
         rejectedAt: ngoData.rejectedAt || null,
@@ -238,12 +239,14 @@ router.get("/details/:ngoId", authenticateToken, async (req, res) => {
     // Return only public information
     res.json({
       success: true,
-      name: ngoData.name,
-      email: ngoData.email,
-      phone: ngoData.phone,
-      address: ngoData.address,
-      registrationId: ngoData.registrationId,
-      status: ngoData.status,
+      ngo: {
+        name: ngoData.name,
+        email: ngoData.email,
+        phone: ngoData.phone,
+        address: ngoData.address,
+        registrationId: ngoData.registrationId,
+        status: ngoData.status,
+      }
     });
   } catch (error) {
     console.error("Get NGO details error:", error);

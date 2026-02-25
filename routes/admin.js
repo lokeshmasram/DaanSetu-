@@ -460,13 +460,13 @@ router.get("/activities", authenticateAdmin, async (req, res) => {
       });
       
       // Add donation matched activity
-      if (donation.status === 'matched' || donation.status === 'completed') {
+      if (donation.status === 'accepted' || donation.status === 'completed') {
         activities.push({
           id: `donation-matched-${doc.id}`,
           type: 'donation_matched',
           icon: 'fa-handshake',
           color: '#00b894',
-          title: 'Donation Matched',
+          title: 'Donation Accepted',
           description: `${donation.ngoName || 'An NGO'} accepted ${donation.itemType}`,
           timestamp: donation.acceptedAt || donation.createdAt,
           relatedId: doc.id

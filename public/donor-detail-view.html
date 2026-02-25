@@ -187,6 +187,11 @@
         color: white;
       }
 
+      .status-accepted {
+        background: #00b894;
+        color: white;
+      }
+
       .status-completed {
         background: #6c757d;
         color: white;
@@ -315,7 +320,7 @@
             <h1 id="pageTitle">Loading...</h1>
           </div>
           <div class="detail-actions">
-            <button class="back-button" onclick="window.location.href='/donor-dashboard'">
+            <button class="back-button" onclick="window.location.href='/donor-dashboard.html'">
               <i class="fas fa-arrow-left"></i> Back to Dashboard
             </button>
             <button class="export-button" onclick="exportData()">
@@ -366,6 +371,14 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="notificationToast" class="notification-toast hidden">
+      <div class="toast-content">
+        <i class="fas fa-bell"></i>
+        <span id="toastMessage"></span>
       </div>
     </div>
 

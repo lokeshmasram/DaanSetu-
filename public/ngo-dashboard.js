@@ -158,13 +158,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 // Check authentication
 async function checkAuth() {
+  console.log("🔐 Checking authentication...");
   const token = localStorage.getItem("token");
   if (!token) {
+    console.log("❌ No token found, redirecting to login");
     window.location.href = "/";
     return;
   }
 
   try {
+    console.log("📡 Fetching user profile...");
     const response = await fetch("/api/auth/profile", {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -172,6 +175,7 @@ async function checkAuth() {
     });
 
     if (!response.ok) {
+      console.log("❌ Profile fetch failed:", response.status);
       showNotification("Session expired, please log in again.", "error");
       setTimeout(() => {
         localStorage.removeItem("token");
@@ -182,8 +186,10 @@ async function checkAuth() {
 
     const result = await response.json();
     currentUser = result.user;
+    console.log("✅ User authenticated:", currentUser.userType);
 
     if (currentUser.userType !== "ngo") {
+      console.log("❌ Not an NGO user");
       showNotification("Unauthorized access. Please log in as NGO.", "error");
       setTimeout(() => {
         localStorage.removeItem("token");
@@ -192,7 +198,7 @@ async function checkAuth() {
       return;
     }
   } catch (error) {
-    console.error("Auth check failed:", error);
+    console.error("❌ Auth check error:", error);
     showNotification("Session expired, please log in again.", "error");
     setTimeout(() => {
       localStorage.removeItem("token");
@@ -203,6 +209,7 @@ async function checkAuth() {
 
 // Load NGO data
 async function loadNGOData() {
+  console.log("📋 Loading NGO data...");
   try {
     const response = await fetch("/api/ngos/status", {
       headers: {
@@ -216,6 +223,12 @@ async function loadNGOData() {
       ngoData.status = result.status;
       ngoData.id = currentUser.uid;
       ngoNameElement.textContent = ngoData.name;
+      
+      console.log("✅ NGO data loaded:", {
+        name: ngoData.name,
+        status: ngoData.status,
+        hasCoordinates: !!ngoData.coordinates
+      });
 
       // ULTIMATE PROTECTION: Always keep the status banner completely hidden
       // This completely prevents any flash of banners for new NGOs
@@ -236,19 +249,21 @@ async function loadNGOData() {
       // But even then, we keep it minimal
       
       // Join NGO room for real-time notifications
+      console.log("🔌 Joining NGO room:", ngoData.id);
       socket.emit("join-ngo-room", ngoData.id);
     } else {
       const error = await response.json();
+      console.error("❌ Failed to load NGO data:", error);
       showNotification(error.message || "Failed to load NGO data", "error");
     }
   } catch (error) {
-    console.error("Failed to load NGO data:", error);
+    console.error("❌ Exception loading NGO data:", error);
     showNotification("Failed to load NGO data", "error");
   }
 }
 
 // Initialize NGO map for location selection
-function initializeNgoMap(retryCount = 0) {
+async function initializeNgoMap() {
   const mapContainer = document.getElementById("ngoMap");
   if (!mapContainer) {
     console.error("NGO map container not found");
@@ -258,16 +273,23 @@ function initializeNgoMap(retryCount = 0) {
   // Don't reinitialize if already done
   if (ngoMap) return;
 
-  // Check if Google Maps is loaded, if not retry
-  if (typeof google === "undefined" || !google.maps) {
-    if (retryCount < 3) {
-      console.log(`Google Maps not yet loaded, retrying... (attempt ${retryCount + 1}/3)`);
-      setTimeout(() => initializeNgoMap(retryCount + 1), 500);
-      return;
+  // Wait for Google Maps to load (max 10 seconds)
+  console.log("Waiting for Google Maps to load...");
+  let attempts = 0;
+  const maxAttempts = 20; // 20 attempts * 500ms = 10 seconds
+  
+  while (attempts < maxAttempts) {
+    if (typeof google !== "undefined" && google.maps) {
+      console.log("✅ Google Maps loaded successfully");
+      break;
     }
-    
-    // Fallback: Show coordinate input instead of map
-    console.warn("Google Maps not available. Using coordinate input fallback.");
+    await new Promise(resolve => setTimeout(resolve, 500));
+    attempts++;
+  }
+  
+  // Check if Google Maps loaded
+  if (typeof google === "undefined" || !google.maps) {
+    console.error("Failed to load Google Maps after waiting");
     showNgoMapFallback(mapContainer);
     return;
   }
@@ -643,8 +665,8 @@ function showModal(modalId) {
   
   // Initialize NGO location map if opening the location modal
   if (modalId === "updateLocationModal") {
-    setTimeout(() => {
-      initializeNgoMap();
+    setTimeout(async () => {
+      await initializeNgoMap();
     }, 300);
   }
 }
@@ -724,23 +746,29 @@ async function createVolunteerTask(taskData, donationId = null) {
 // Load available donations
 async function loadAvailableDonations() {
   try {
+    console.log("🔄 Loading available donations...");
     const response = await fetch("/api/donations/available", {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       },
     });
 
+    console.log("📡 Available donations API response:", response.status);
+
     if (response.ok) {
       const result = await response.json();
+      console.log("✅ Available donations received:", result.donations?.length || 0);
+      console.log("📋 Donations data:", result.donations);
       renderDonationsList(result.donations || []);
     } else {
       const error = await response.json();
+      console.error("❌ Failed to load donations:", error);
       showNotification(error.message || "Failed to load donations", "error");
       donationsList.innerHTML =
         '<div class="error">Failed to load donations</div>';
     }
   } catch (error) {
-    console.error("Failed to load donations:", error);
+    console.error("❌ Exception loading donations:", error);
     showNotification("Failed to load donations", "error");
     donationsList.innerHTML =
       '<div class="error">Failed to load donations</div>';
@@ -750,6 +778,7 @@ async function loadAvailableDonations() {
 // Load accepted donations
 async function loadAcceptedDonations() {
   try {
+    console.log("📋 Loading accepted donations...");
     const response = await fetch("/api/donations/history", {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -758,10 +787,13 @@ async function loadAcceptedDonations() {
 
     if (response.ok) {
       const result = await response.json();
+      console.log("📦 History API returned:", result.donations?.length || 0, "donations");
       const accepted = (result.donations || []).filter(
         (donation) =>
-          donation.status === "matched" || donation.status === "completed"
+          donation.status === "accepted" || donation.status === "completed"
       );
+      console.log("✅ Filtered accepted donations:", accepted.length, "donations");
+      console.log("📊 Statuses:", accepted.map(d => d.status));
       renderAcceptedDonations(accepted);
     } else {
       const error = await response.json();
@@ -823,13 +855,13 @@ async function updateStatistics() {
       const history = result.donations || [];
 
       const totalAccepted = history.filter(
-        (d) => d.status === "matched" || d.status === "completed"
+        (d) => d.status === "accepted" || d.status === "completed"
       ).length;
       const totalCompleted = history.filter(
         (d) => d.status === "completed"
       ).length;
       const pendingPickup = history.filter(
-        (d) => d.status === "matched"
+        (d) => d.status === "accepted"
       ).length;
 
       totalAcceptedElement.textContent = totalAccepted;
@@ -847,7 +879,11 @@ async function updateStatistics() {
 
 // Render donations list
 function renderDonationsList(donations) {
+  console.log("🎨 Rendering donations list:", donations.length, "donations");
+  console.log("📦 NGO Status:", ngoData?.status);
+  
   if (donations.length === 0) {
+    console.log("⚠️ No donations to display");
     donationsList.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-gift"></i>
@@ -857,6 +893,7 @@ function renderDonationsList(donations) {
     return;
   }
 
+  console.log("✅ Rendering", donations.length, "donation items");
   donationsList.innerHTML = donations
     .map(
       (donation) => `
@@ -925,9 +962,9 @@ function renderAcceptedDonations(donations) {
     .map((donation) => {
       // For donations with pickup tasks, only show "Mark Complete" button if volunteer task is completed
       let showCompleteButton =
-        donation.status === "matched" && !donation.hasPickupTask;
+        donation.status === "accepted" && !donation.hasPickupTask;
       let showAwaitingMessage =
-        donation.status === "matched" &&
+        donation.status === "accepted" &&
         donation.hasPickupTask &&
         !donation.volunteerTaskCompleted;
 
@@ -956,14 +993,14 @@ function renderAcceptedDonations(donations) {
                     : "N/A"
                 }</p>
                 ${
-                  donation.matchedAt
+                  donation.acceptedAt
                     ? `<p><strong>Accepted:</strong> ${new Date(
-                        donation.matchedAt._seconds * 1000
+                        donation.acceptedAt._seconds * 1000
                       ).toLocaleDateString()}</p>`
                     : ""
                 }
                 ${
-                  donation.hasPickupTask && donation.status === "matched"
+                  donation.hasPickupTask && donation.status === "accepted"
                     ? `<p><strong>Volunteer Task:</strong> ${
                         donation.volunteerTaskCompleted
                           ? "Completed"
@@ -1195,6 +1232,7 @@ async function showDonationDetails(donationId) {
 // Accept donation
 async function acceptDonation(donationId) {
   try {
+    console.log("🎯 Accepting donation:", donationId);
     const response = await fetch(`/api/donations/${donationId}/accept`, {
       method: "POST",
       headers: {
@@ -1204,16 +1242,25 @@ async function acceptDonation(donationId) {
     });
 
     if (response.ok) {
+      const result = await response.json();
+      console.log("✅ Donation accepted successfully:", result);
       showNotification("Donation accepted successfully!", "success");
+      
+      // Reload all relevant sections
+      console.log("🔄 Reloading available donations...");
       await loadAvailableDonations();
+      console.log("🔄 Reloading accepted donations...");
       await loadAcceptedDonations();
+      console.log("🔄 Updating statistics...");
       await updateStatistics();
+      console.log("✅ All sections updated successfully");
     } else {
       const error = await response.json();
+      console.error("❌ Failed to accept donation:", error);
       showNotification(error.message || "Failed to accept donation", "error");
     }
   } catch (error) {
-    console.error("Failed to accept donation:", error);
+    console.error("❌ Exception accepting donation:", error);
     showNotification("Failed to accept donation", "error");
   }
 }

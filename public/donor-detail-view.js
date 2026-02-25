@@ -16,6 +16,46 @@ const itemsPerPage = 20;
 let allData = [];
 let filteredData = [];
 
+// Cancel donation from detail view - defined early
+async function cancelDonationFromDetail(donationId) {
+  try {
+    console.log("🚫 Attempting to cancel donation from detail view:", donationId);
+    
+    if (!confirm('Are you sure you want to cancel this donation? This action cannot be undone.')) {
+      console.log("❌ User cancelled the cancellation");
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    const res = await fetch(`/api/donations/${donationId}/cancel`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    const result = await res.json();
+    console.log("📡 Cancel API response:", result);
+
+    if (!res.ok) {
+      throw new Error(result.message || "Failed to cancel donation");
+    }
+
+    showNotification("Donation cancelled successfully", "success");
+    
+    // Remove the cancelled donation from the current view
+    allData = allData.filter(d => d.id !== donationId);
+    applyFilters();
+  } catch (error) {
+    console.error("❌ Cancel donation error:", error);
+    showNotification(error.message || "Failed to cancel donation", "error");
+  }
+}
+
+// Make cancelDonationFromDetail available globally immediately
+window.cancelDonationFromDetail = cancelDonationFromDetail;
+
 // View configurations for donor
 const viewConfigs = {
   total: {
@@ -32,7 +72,7 @@ const viewConfigs = {
       { key: 'ngoName', label: 'NGO', width: '20%' }
     ],
     filters: [
-      { key: 'status', label: 'Status', type: 'select', options: ['all', 'available', 'matched', 'completed', 'cancelled'] },
+      { key: 'status', label: 'Status', type: 'select', options: ['all', 'pending', 'accepted', 'picked_up', 'received', 'completed', 'cancelled'] },
       { key: 'search', label: 'Search', type: 'text', placeholder: 'Search by item type or location...' }
     ]
   },
@@ -57,16 +97,17 @@ const viewConfigs = {
     icon: 'fa-clock',
     endpoint: '/api/donations/history',
     columns: [
-      { key: 'id', label: 'ID', width: '10%' },
-      { key: 'itemType', label: 'Item Type', width: '15%' },
-      { key: 'quantity', label: 'Quantity', width: '10%' },
-      { key: 'pickupAddress', label: 'Location', width: '25%' },
+      { key: 'id', label: 'ID', width: '8%' },
+      { key: 'itemType', label: 'Item Type', width: '12%' },
+      { key: 'quantity', label: 'Quantity', width: '8%' },
+      { key: 'pickupAddress', label: 'Location', width: '20%' },
       { key: 'status', label: 'Status', width: '10%', isStatus: true },
-      { key: 'createdAt', label: 'Created', width: '15%', isDate: true },
-      { key: 'ngoName', label: 'NGO', width: '15%' }
+      { key: 'createdAt', label: 'Created', width: '12%', isDate: true },
+      { key: 'ngoName', label: 'NGO', width: '15%' },
+      { key: 'actions', label: 'Actions', width: '15%', isActions: true }
     ],
     filters: [
-      { key: 'status', label: 'Status', type: 'select', options: ['all', 'available', 'matched'] },
+      { key: 'status', label: 'Status', type: 'select', options: ['all', 'pending', 'accepted', 'available', 'matched'] },
       { key: 'search', label: 'Search', type: 'text', placeholder: 'Search by item type or NGO...' }
     ]
   },
@@ -106,66 +147,171 @@ const viewConfigs = {
 // Initialize page
 document.addEventListener('DOMContentLoaded', async () => {
   console.log("📖 Detail view page loading...");
-  console.log("   ViewType:", viewType);
+  console.log("   ViewType from sessionStorage:", viewType);
   console.log("   Available configs:", Object.keys(viewConfigs));
+  
+  // Get elements
+  const loadingSpinner = document.getElementById('loadingSpinner');
+  const tableContainer = document.getElementById('tableContainer');
+  const emptyState = document.getElementById('emptyState');
+  const pageTitleEl = document.getElementById('pageTitle');
+  const headerIconEl = document.getElementById('headerIcon');
   
   if (!viewType || !viewConfigs[viewType]) {
     console.error("❌ Invalid view type:", viewType);
-    console.log("⚠️  Redirecting to donor-dashboard...");
-    window.location.href = '/donor-dashboard';
+    console.log("⚠️  Available types:", Object.keys(viewConfigs));
+    
+    // Show error and redirect after 2 seconds
+    if (loadingSpinner) {
+      loadingSpinner.innerHTML = `
+        <i class="fas fa-exclamation-triangle" style="color: #f39c12; font-size: 3rem; margin-bottom: 1rem;"></i>
+        <p style="color: #e74c3c; font-weight: 600;">Invalid view type</p>
+        <p style="font-size: 0.9rem;">Redirecting to dashboard...</p>
+      `;
+    }
+    
+    setTimeout(() => {
+      window.location.href = '/donor-dashboard.html';
+    }, 2000);
     return;
   }
 
   const config = viewConfigs[viewType];
   console.log("✅ Config loaded for:", viewType);
+  console.log("   Config:", config);
   
   // Set page title and icon
-  const pageTitleEl = document.getElementById('pageTitle');
-  const headerIconEl = document.getElementById('headerIcon');
-  
-  if (pageTitleEl) pageTitleEl.textContent = config.title;
-  if (headerIconEl) headerIconEl.className = `fas ${config.icon}`;
+  if (pageTitleEl) {
+    pageTitleEl.textContent = config.title;
+    console.log("✅ Page title set:", config.title);
+  }
+  if (headerIconEl) {
+    headerIconEl.className = `fas ${config.icon}`;
+    console.log("✅ Header icon set:", config.icon);
+  }
   document.title = `${config.title} - DaanSetu Donor`;
 
   // Setup filters
+  console.log("🔧 Setting up filters...");
   setupFilters(config.filters);
+  console.log("✅ Filters setup complete");
 
   // Check if data is in sessionStorage (from direct navigation)
   const sessionData = sessionStorage.getItem('detailViewData');
+  const sessionTitle = sessionStorage.getItem('detailViewTitle');
+  const sessionType = sessionStorage.getItem('detailViewType');
+  
   console.log("🔍 Checking sessionStorage for data...");
   console.log("   Data found:", !!sessionData);
+  console.log("   Title:", sessionTitle);
+  console.log("   Type:", sessionType);
   
   if (sessionData) {
     try {
       console.log("📦 Parsing sessionStorage data...");
+      console.log("   Data length:", sessionData.length, "bytes");
+      
       const data = JSON.parse(sessionData);
-      console.log("✅ Data parsed successfully. Count:", data.length);
+      console.log("✅ Data parsed successfully");
+      console.log("   Data type:", Array.isArray(data) ? 'array' : typeof data);
+      console.log("   Data count:", Array.isArray(data) ? data.length : 'N/A');
       
-      allData = data;
+      allData = Array.isArray(data) ? data : [];
       sessionStorage.removeItem('detailViewData'); // Clear after use
+      sessionStorage.removeItem('detailViewTitle');
+      sessionStorage.removeItem('detailViewType');
+      
       filteredData = [...allData];
+      console.log("📋 Filtered data initialized with", filteredData.length, "items");
       
-      const loadingSpinner = document.getElementById('loadingSpinner');
-      const tableContainer = document.getElementById('tableContainer');
-      const emptyState = document.getElementById('emptyState');
-      
-      if (loadingSpinner) loadingSpinner.style.display = 'none';
+      // Hide loading spinner
+      if (loadingSpinner) {
+        loadingSpinner.style.display = 'none';
+        console.log("✅ Loading spinner hidden");
+      }
       
       if (allData.length === 0) {
         console.log("⚠️  No data to display");
-        if (emptyState) emptyState.style.display = 'block';
+        if (emptyState) {
+          emptyState.style.display = 'block';
+          console.log("✅ Empty state shown");
+        }
+        if (tableContainer) tableContainer.style.display = 'none';
       } else {
         console.log("✅ Rendering table with", allData.length, "items");
-        if (tableContainer) tableContainer.style.display = 'block';
-        renderTable();
+        if (emptyState) emptyState.style.display = 'none';
+        if (tableContainer) {
+          tableContainer.style.display = 'block';
+          console.log("✅ Table container shown");
+        }
+        try {
+          renderTable();
+          console.log("✅ renderTable() completed successfully");
+        } catch (renderError) {
+          console.error("❌ Error in renderTable():", renderError);
+          if (loadingSpinner) {
+            loadingSpinner.innerHTML = `
+              <i class="fas fa-exclamation-triangle" style="color: #f39c12;"></i>
+              <p style="color: #e74c3c;">Error rendering data</p>
+              <p style="font-size: 0.9rem;">${renderError.message}</p>
+            `;
+            loadingSpinner.style.display = 'block';
+          }
+        }
       }
     } catch (error) {
       console.error("❌ Error parsing session data:", error);
-      await loadData(config.endpoint);
+      console.error("   Error stack:", error.stack);
+      console.log("⚠️  Falling back to API load...");
+      if (loadingSpinner) {
+        loadingSpinner.innerHTML = `
+          <i class="fas fa-exclamation-triangle" style="color: #f39c12;"></i>
+          <p style="color: #e74c3c;">Error loading data</p>
+          <p style="font-size: 0.9rem;">${error.message}</p>
+          <button onclick="window.location.href='/donor-dashboard.html'" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">Back to Dashboard</button>
+        `;
+      }
     }
   } else {
-    console.log("ℹ️  No sessionStorage data, loading from API...");
-    await loadData(config.endpoint);
+    console.log("ℹ️  No sessionStorage data found, loading from API...");
+    
+    try {
+      // Load data from API
+      await loadData(config.endpoint);
+      
+      filteredData = [...allData];
+      console.log("📋 Data loaded from API:", filteredData.length, "items");
+      
+      // Hide loading spinner
+      if (loadingSpinner) {
+        loadingSpinner.style.display = 'none';
+      }
+      
+      if (allData.length === 0) {
+        console.log("⚠️  No data available");
+        if (emptyState) {
+          emptyState.style.display = 'block';
+        }
+        if (tableContainer) tableContainer.style.display = 'none';
+      } else {
+        if (emptyState) emptyState.style.display = 'none';
+        if (tableContainer) {
+          tableContainer.style.display = 'block';
+        }
+        renderTable();
+        console.log("✅ Table rendered successfully");
+      }
+    } catch (error) {
+      console.error("❌ Error loading data from API:", error);
+      if (loadingSpinner) {
+        loadingSpinner.innerHTML = `
+          <i class="fas fa-exclamation-triangle" style="color: #f39c12;"></i>
+          <p style="color: #e74c3c;">Error loading data</p>
+          <p style="font-size: 0.9rem;">${error.message}</p>
+          <button onclick="window.location.href='/donor-dashboard.html'" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">Back to Dashboard</button>
+        `;
+      }
+    }
   }
 });
 
@@ -237,14 +383,55 @@ async function loadData(endpoint) {
     const data = await response.json();
     console.log('Data received:', data);
     
+    const donations = Array.isArray(data.donations) ? data.donations : [];
+    console.log('Total donations loaded:', donations.length);
+    
+    // Check if any donations need NGO name enrichment (fallback if backend didn't do it)
+    const needsEnrichment = donations.some(d => d.matchedNgoId && !d.ngoName);
+    
+    if (needsEnrichment) {
+      console.log('🔄 Enriching donations with NGO names (frontend fallback)...');
+      for (let donation of donations) {
+        if (donation.matchedNgoId && !donation.ngoName) {
+          try {
+            const ngoRes = await fetch(`/api/ngos/details/${donation.matchedNgoId}`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            if (ngoRes.ok) {
+              const ngoData = await ngoRes.json();
+              donation.ngoName = ngoData.ngo?.name || 'Unknown NGO';
+            } else {
+              donation.ngoName = 'Unknown NGO';
+            }
+          } catch (err) {
+            console.error('❌ Error fetching NGO name:', err);
+            donation.ngoName = 'Unknown NGO';
+          }
+        }
+      }
+      console.log('✅ NGO names enriched');
+    }
+    
+    // Set default NGO names for unmatched donations
+    donations.forEach(d => {
+      if (!d.ngoName) {
+        d.ngoName = d.matchedNgoId ? 'Unknown NGO' : 'Not Assigned';
+      }
+    });
+    
     // Process data based on view type
     if (viewType === 'ngos-helped') {
       // Aggregate data by NGO for NGOs helped view
       const ngoMap = new Map();
       
-      (data.donations || []).forEach(donation => {
-        // More robust check for NGO data
-        const hasNgoData = donation.ngoName && donation.matchedNgoId;
+      donations.forEach(donation => {
+        // Include donations that have been matched to an NGO (accepted, picked_up, received, completed)
+        const hasNgoData = donation.matchedNgoId && 
+          (donation.status === 'accepted' || 
+           donation.status === 'picked_up' || 
+           donation.status === 'received' || 
+           donation.status === 'completed');
+           
         console.log('Processing donation for NGO aggregation:', { 
           donationId: donation.id, 
           hasNgoData, 
@@ -256,15 +443,23 @@ async function loadData(endpoint) {
         if (hasNgoData) {
           if (!ngoMap.has(donation.matchedNgoId)) {
             ngoMap.set(donation.matchedNgoId, {
-              ngoName: donation.ngoName,
+              ngoName: donation.ngoName || 'Unknown NGO',
               matchedCount: 0,
               completedCount: 0,
+              totalDonations: 0,
               lastDonation: null
             });
           }
           
           const ngoData = ngoMap.get(donation.matchedNgoId);
-          ngoData.matchedCount++;
+          ngoData.totalDonations++;
+          
+          // Count matched (active) donations - accepted, picked_up, received
+          if (donation.status === 'accepted' || 
+              donation.status === 'picked_up' || 
+              donation.status === 'received') {
+            ngoData.matchedCount++;
+          }
           
           if (donation.status === 'completed') {
             ngoData.completedCount++;
@@ -341,7 +536,7 @@ async function loadData(endpoint) {
       }
     } else if (viewType === 'completed') {
       // Filter for completed donations only
-      allData = (data.donations || []).filter(donation => donation.status === 'completed');
+      allData = donations.filter(donation => donation.status === 'completed');
       
       // If we're in demo mode and there's no data, add some mock data for testing
       if (allData.length === 0) {
@@ -373,9 +568,15 @@ async function loadData(endpoint) {
         }
       }
     } else if (viewType === 'pending') {
-      // Filter for pending donations (available or matched)
-      allData = (data.donations || []).filter(donation => 
-        donation.status === 'available' || donation.status === 'matched');
+      // Filter for pending donations (pending, available, accepted, picked_up, received)
+      allData = donations.filter(donation => 
+        donation.status === 'pending' || 
+        donation.status === 'available' || 
+        donation.status === 'accepted' || 
+        donation.status === 'picked_up' || 
+        donation.status === 'received');
+      
+      console.log('Pending donations filtered:', allData.length);
       
       // If we're in demo mode and there's no data, add some mock data for testing
       if (allData.length === 0) {
@@ -406,8 +607,11 @@ async function loadData(endpoint) {
         }
       }
     } else if (viewType === 'cancelled') {
-      // Filter for cancelled donations only
-      allData = (data.donations || []).filter(donation => donation.status === 'cancelled');
+      // Filter for cancelled/rejected donations
+      allData = donations.filter(donation => 
+        donation.status === 'cancelled' || donation.status === 'rejected');
+      
+      console.log('Cancelled donations filtered:', allData.length);
       
       // If we're in demo mode and there's no data, add some mock data for testing
       if (allData.length === 0) {
@@ -431,7 +635,7 @@ async function loadData(endpoint) {
       }
     } else {
       // All donations
-      allData = data.donations || [];
+      allData = donations;
       
       // If we're in demo mode and there's no data, add some mock data for testing
       if (allData.length === 0) {
@@ -550,9 +754,16 @@ function renderTable() {
     console.log('   tableBody found:', !!tableBody);
     console.log('   Filtered data count:', filteredData.length);
     
-    if (!config || !tableHead || !tableBody) {
-      console.error('❌ Missing required elements for table rendering');
-      return;
+    if (!config) {
+      const errorMsg = `Config not found for viewType: ${viewType}. Available: ${Object.keys(viewConfigs).join(', ')}`;
+      console.error('❌', errorMsg);
+      throw new Error(errorMsg);
+    }
+    
+    if (!tableHead || !tableBody) {
+      const errorMsg = 'Missing required DOM elements: tableHead or tableBody';
+      console.error('❌', errorMsg);
+      throw new Error(errorMsg);
     }
 
     // Render headers
@@ -583,6 +794,19 @@ function renderTable() {
             value = `<span class="status-badge status-${value}">${value}</span>`;
           } else if (col.key === 'id') {
             value = value.substring(0, 12) + '...';
+          } else if (col.isActions) {
+            // Check if donation can be cancelled (status is pending or available without NGO match)
+            const canCancel = item.status === 'pending' || 
+                             (item.status === 'available' && !item.matchedNgoId) ||
+                             (!item.matchedNgoId && item.status !== 'completed' && item.status !== 'cancelled' && item.status !== 'accepted');
+            
+            console.log(`🎯 Item ${item.id?.substring(0, 8)}: status=${item.status}, matchedNgoId=${item.matchedNgoId}, canCancel=${canCancel}`);
+            
+            if (viewType === 'pending' && canCancel) {
+              value = `<button class="btn-danger btn-small" onclick="window.cancelDonationFromDetail('${item.id}')" title="Cancel donation"><i class="fas fa-times"></i> Cancel</button>`;
+            } else {
+              value = '-';
+            }
           }
           
           return `<td>${value}</td>`;
@@ -678,4 +902,32 @@ function formatDate(timestamp) {
     month: 'short',
     day: 'numeric'
   });
+}
+
+// Show notification toast
+function showNotification(message, type = 'info') {
+  const toast = document.getElementById('notificationToast');
+  const toastMessage = document.getElementById('toastMessage');
+  
+  if (!toast || !toastMessage) return;
+  
+  toastMessage.textContent = message;
+  
+  // Remove existing type classes
+  toast.classList.remove('success', 'error', 'warning', 'info');
+  
+  // Add new type class
+  toast.classList.add(type);
+  
+  // Show toast
+  toast.classList.remove('hidden');
+  toast.classList.add('show');
+  
+  // Hide after 3 seconds
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => {
+      toast.classList.add('hidden');
+    }, 300);
+  }, 3000);
 }

@@ -43,9 +43,19 @@ async function loadDonationDetails() {
     const donation = await donationResponse.json();
     console.log('Donation loaded:', donation);
 
-    // Check if donation is matched or completed
-    if (donation.status !== 'matched' && donation.status !== 'completed') {
-      showError('This donation has not been accepted by an NGO yet');
+    // Check if donation has been accepted/matched or completed
+    // Accept both old and new status names for compatibility
+    const validStatuses = ['matched', 'accepted', 'completed', 'picked_up', 'received'];
+    if (!validStatuses.includes(donation.status)) {
+      console.log('Donation status:', donation.status);
+      console.log('Valid statuses:', validStatuses);
+      showError('This donation has not been accepted by an NGO yet. Current status: ' + donation.status);
+      return;
+    }
+
+    // Check if donation has NGO matched
+    if (!donation.matchedNgoId) {
+      showError('This donation has not been matched with an NGO yet');
       return;
     }
 

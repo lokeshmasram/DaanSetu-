@@ -1,19 +1,57 @@
 // Initialize Socket.IO
 const socket = io();
 
+// Cancel donation function - defined early so it's available globally
+async function cancelDonation(donationId) {
+  try {
+    console.log("🚫 Attempting to cancel donation:", donationId);
+    
+    if (!confirm('Are you sure you want to cancel this donation? This action cannot be undone.')) {
+      console.log("❌ User cancelled the cancellation");
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    const res = await fetch(`/api/donations/${donationId}/cancel`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    const result = await res.json();
+    console.log("📡 Cancel API response:", result);
+
+    if (!res.ok) {
+      throw new Error(result.message || "Failed to cancel donation");
+    }
+
+    showNotification("Donation cancelled successfully", "success");
+    
+    // Reload donations and update statistics
+    await loadMyDonations();
+    await updateStatistics();
+  } catch (error) {
+    console.error("❌ Cancel donation error:", error);
+    showNotification(error.message || "Failed to cancel donation", "error");
+  }
+}
+
+// Make cancelDonation available globally immediately
+window.cancelDonation = cancelDonation;
+
 // Global test function for debugging
 window.testStatButton = function(category) {
   console.log("🧪 Test function called with category:", category);
-  console.log("   viewDonationDetails function exists:", typeof viewDonationDetails === 'function');
-  if (typeof viewDonationDetails === 'function') {
-    viewDonationDetails(category);
+  console.log("   window.viewDonationDetails exists:", typeof window.viewDonationDetails === 'function');
+  if (typeof window.viewDonationDetails === 'function') {
+    window.viewDonationDetails(category);
   } else {
-    console.error("❌ viewDonationDetails function not found!");
+    console.error("❌ viewDonationDetails function not found on window!");
+    console.error("   Available window functions:", Object.keys(window).filter(k => typeof window[k] === 'function' && k.includes('view')));
   }
 };
-
-// Make viewDonationDetails available globally
-window.viewDonationDetails = viewDonationDetails;
 
 // Global variables
 let currentUser = null;
@@ -44,8 +82,9 @@ const ngosHelpedElement = document.getElementById("ngosHelped");
 // Initialize dashboard
 document.addEventListener("DOMContentLoaded", async () => {
   console.log("🚀 Donor Dashboard - Initializing...");
-  console.log("   Functions available: viewDonationDetails =", typeof viewDonationDetails);
-  console.log("   Functions available: openDetailView =", typeof openDetailView);
+  console.log("   window.viewDonationDetails =", typeof window.viewDonationDetails);
+  console.log("   window.openDetailView =", typeof window.openDetailView);
+  console.log("   window.testStatButton =", typeof window.testStatButton);
   
   await checkAuth();
   await loadDonorData();
@@ -54,6 +93,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupEventListeners();
   setupSocketListeners();
   
+  // These should be available by now due to hoisting
+  console.log("   After init - window.viewDonationDetails =", typeof window.viewDonationDetails);
+  console.log("   After init - window.openDetailView =", typeof window.openDetailView);
   console.log("✅ Donor Dashboard - Initialization complete");
 });
 
@@ -88,22 +130,21 @@ async function checkAuth() {
 // Open a dedicated donation details page in a new tab/window
 function openDonationPage(donationId) {
   try {
-    if (!donationId) return;
-    const url = `/donation-details.html?id=${encodeURIComponent(donationId)}&from=donor-dashboard`;
-    const newWin = window.open(url, "_blank");
-    if (newWin) {
-      try {
-        newWin.opener = null;
-      } catch (e) {
-        // ignore
-      }
-    } else {
-      // Fallback: navigate in same tab
-      window.location.href = url;
+    console.log("🔗 Opening donation details page for:", donationId);
+    
+    if (!donationId) {
+      console.error("❌ No donation ID provided");
+      return;
     }
-  } catch (err) {
-    console.error("openDonationPage error:", err);
-    window.location.href = `/donation-details.html?id=${encodeURIComponent(donationId)}&from=donor-dashboard`;
+    
+    const url = `/donation-details.html?id=${encodeURIComponent(donationId)}`;
+    console.log("🎯 Navigating to:", url);
+    
+    // Open in same window
+    window.location.href = url;
+  } catch (error) {
+    console.error("❌ Error opening donation page:", error);
+    showNotification("Failed to open donation details", "error");
   }
 }
 
@@ -429,6 +470,9 @@ async function loadMyDonations() {
     const result = await res.json();
     const donations = Array.isArray(result.donations) ? result.donations : [];
 
+    console.log("📦 Loaded donations:", donations.length);
+    console.log("📊 Donation statuses:", donations.map(d => ({ id: d.id?.substring(0, 8), status: d.status })));
+
     // Show ALL donations (completed, pending, cancelled, etc.)
     renderDonationsList(donations);
     
@@ -461,19 +505,26 @@ async function updateStatistics() {
     const result = await res.json();
     const donations = Array.isArray(result.donations) ? result.donations : [];
 
+    console.log("📊 UPDATE STATISTICS - Total donations:", donations.length);
+    console.log("📊 All donation statuses:", donations.map(d => d.status));
+
     const totalCount = donations.length;
     const completedCount = donations.filter(d => d.status === "completed").length;
-    const pendingCount = donations.filter(d => 
-      d.status === "available" || d.status === "matched" || d.status === "in-progress"
-    ).length;
+    const pendingDonations = donations.filter(d => 
+      d.status === "pending" || d.status === "available" || d.status === "accepted" || d.status === "picked_up" || d.status === "received"
+    );
+    const pendingCount = pendingDonations.length;
     const cancelledCount = donations.filter(d => 
       d.status === "cancelled" || d.status === "rejected"
     ).length;
 
+    console.log("📊 PENDING DONATIONS:", pendingDonations);
+    console.log("📊 COUNTS - Total:", totalCount, "Completed:", completedCount, "Pending:", pendingCount, "Cancelled:", cancelledCount);
+
     // Get unique NGOs helped
     const ngosHelped = new Set(
       donations
-        .filter(d => (d.status === "matched" || d.status === "completed") && d.matchedNgoId)
+        .filter(d => (d.status === "accepted" || d.status === "picked_up" || d.status === "received" || d.status === "completed") && d.matchedNgoId)
         .map(d => d.matchedNgoId)
     ).size;
 
@@ -482,8 +533,10 @@ async function updateStatistics() {
     if (pendingDonationsElement) pendingDonationsElement.textContent = pendingCount;
     if (cancelledDonationsElement) cancelledDonationsElement.textContent = cancelledCount;
     if (ngosHelpedElement) ngosHelpedElement.textContent = ngosHelped;
+
+    console.log("✅ Statistics updated in DOM");
   } catch (error) {
-    console.error("Update statistics error:", error);
+    console.error("❌ Update statistics error:", error);
   }
 }
 
@@ -501,8 +554,16 @@ function renderDonationsList(donations) {
 
   donationsList.innerHTML = donations
     .map(
-      (donation) => `
-        <div class="donation-item ${donation.status}" onclick="openDonationPage('${donation.id}')">
+      (donation) => {
+        // Check if donation can be cancelled (status is pending, available, or not accepted)
+        const canCancel = donation.status === 'pending' || 
+                         (donation.status === 'available' && !donation.matchedNgoId) ||
+                         (!donation.matchedNgoId && donation.status !== 'completed' && donation.status !== 'cancelled');
+        
+        console.log(`🎯 Donation ${donation.id?.substring(0, 8)}: status=${donation.status}, canCancel=${canCancel}`);
+        
+        return `
+        <div class="donation-item ${donation.status}">
           <div class="donation-header">
             <div class="donation-title">${donation.itemType}</div>
             <div class="donation-distance">
@@ -520,12 +581,18 @@ function renderDonationsList(donations) {
             <p><i class="fas fa-calendar"></i> ${formatDate(donation.createdAt)}</p>
           </div>
           <div class="donation-actions">
-            <button class="btn-secondary btn-small" onclick="openDonationPage('${donation.id}')">
+            <button class="btn-secondary btn-small" onclick="event.stopPropagation(); openDonationPage('${donation.id}')">
               View Details
             </button>
+            ${canCancel ? `
+            <button class="btn-danger btn-small" onclick="event.stopPropagation(); window.cancelDonation('${donation.id}')" title="Cancel this donation">
+              <i class="fas fa-times"></i> Cancel
+            </button>
+            ` : ''}
           </div>
         </div>
-      `
+      `;
+      }
     )
     .join("");
 }
@@ -602,13 +669,56 @@ async function createDonation() {
     const token = localStorage.getItem("token");
     const formData = new FormData(newDonationForm);
 
+    const locationValue = formData.get("location");
+    let coordinates = null;
+    let pickupAddress = locationValue;
+    
+    // Try to parse coordinates from location input if in format "lat, lng" or "lat,lng"
+    if (locationValue) {
+      const coordsMatch = locationValue.trim().match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
+      if (coordsMatch) {
+        const lat = parseFloat(coordsMatch[1]);
+        const lng = parseFloat(coordsMatch[2]);
+        if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+          coordinates = { lat, lng };
+          pickupAddress = `${lat}, ${lng}`;
+          console.log("✅ Parsed coordinates from location:", coordinates);
+        }
+      }
+    }
+    
+    if (!coordinates) {
+      console.warn("⚠️ No valid coordinates found in location. Donation won't be visible to NGOs!");
+      console.warn("   Please enter location as 'latitude, longitude' (e.g., '20.7459, 78.6028')");
+      
+      const proceed = confirm(
+        "⚠️ WARNING: No valid coordinates detected!\\n\\n" +
+        "Without coordinates, NGOs cannot see your donation.\\n\\n" +
+        "Please enter location as: latitude, longitude\\n" +
+        "Example: 20.7459, 78.6028\\n\\n" +
+        "Do you want to go back and fix this?"
+      );
+      
+      if (proceed) {
+        // User wants to fix it
+        return;
+      }
+    }
+
     const donationData = {
       itemType: formData.get("itemType"),
       quantity: formData.get("quantity"),
       category: formData.get("category"),
       description: formData.get("description"),
-      pickupAddress: formData.get("location")
+      pickupAddress: pickupAddress
     };
+    
+    // Only add coordinates if they were successfully parsed
+    if (coordinates) {
+      donationData.coordinates = coordinates;
+    }
+
+    console.log("📤 Sending donation data:", donationData);
 
     const res = await fetch("/api/donations/list", {
       method: "POST",
@@ -626,7 +736,13 @@ async function createDonation() {
 
     closeModal("newDonationModal");
     newDonationForm.reset();
-    showNotification("Donation created successfully!", "success");
+    
+    if (coordinates) {
+      showNotification("Donation created successfully! NGOs in your area will be notified.", "success");
+    } else {
+      showNotification("Donation created, but no coordinates set. Please add coordinates for NGO visibility.", "warning", 8000);
+    }
+    
     await loadMyDonations();
     await updateStatistics();
   } catch (error) {
@@ -639,6 +755,10 @@ async function createDonation() {
 function getStatusText(status) {
   const statusMap = {
     available: "Available",
+    pending: "Pending",
+    accepted: "Accepted",
+    picked_up: "Picked Up",
+    received: "Received",
     matched: "Matched",
     "in-progress": "In Progress",
     completed: "Completed",
@@ -700,29 +820,38 @@ async function viewDonationDetails(category) {
     const donations = Array.isArray(result.donations) ? result.donations : [];
     console.log("📊 Total donations loaded:", donations.length);
 
-    // Enrich donations with NGO names
-    console.log("🔄 Enriching donations with NGO names...");
-    for (let donation of donations) {
-      if (donation.matchedNgoId && !donation.ngoName) {
-        try {
-          const ngoRes = await fetch(`/api/ngos/details/${donation.matchedNgoId}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          if (ngoRes.ok) {
-            const ngoData = await ngoRes.json();
-            donation.ngoName = ngoData.ngo?.name || "Unknown NGO";
-          } else {
+    // Check if any donations need NGO name enrichment (fallback if backend didn't do it)
+    const needsEnrichment = donations.some(d => d.matchedNgoId && !d.ngoName);
+    
+    if (needsEnrichment) {
+      console.log("🔄 Enriching donations with NGO names (frontend fallback)...");
+      for (let donation of donations) {
+        if (donation.matchedNgoId && !donation.ngoName) {
+          try {
+            const ngoRes = await fetch(`/api/ngos/details/${donation.matchedNgoId}`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            if (ngoRes.ok) {
+              const ngoData = await ngoRes.json();
+              donation.ngoName = ngoData.ngo?.name || "Unknown NGO";
+            } else {
+              donation.ngoName = "Unknown NGO";
+            }
+          } catch (err) {
+            console.error("❌ Error fetching NGO name:", err);
             donation.ngoName = "Unknown NGO";
           }
-        } catch (err) {
-          console.error("❌ Error fetching NGO name:", err);
-          donation.ngoName = "Unknown NGO";
         }
-      } else if (!donation.ngoName) {
-        donation.ngoName = "Not Assigned";
       }
+      console.log("✅ NGO names enriched");
     }
-    console.log("✅ NGO names enriched");
+    
+    // Set default for unmatched donations
+    donations.forEach(d => {
+      if (!d.ngoName) {
+        d.ngoName = d.matchedNgoId ? "Unknown NGO" : "Not Assigned";
+      }
+    });
 
     let filteredDonations = [];
     let pageTitle = "";
@@ -738,8 +867,11 @@ async function viewDonationDetails(category) {
         break;
       case "pending":
         filteredDonations = donations.filter(d => 
-          d.status === "available" || d.status === "matched" || d.status === "in-progress"
+          d.status === "pending" || d.status === "available" || d.status === "accepted" || d.status === "picked_up" || d.status === "received"
         );
+        console.log("🔍 PENDING FILTER - All statuses:", donations.map(d => d.status));
+        console.log("🔍 PENDING FILTER - Filtered count:", filteredDonations.length);
+        console.log("🔍 PENDING FILTER - Filtered donations:", filteredDonations);
         pageTitle = "Pending Donations";
         break;
       case "cancelled":
@@ -753,16 +885,16 @@ async function viewDonationDetails(category) {
         const ngosSet = new Set();
         const ngosData = [];
         donations
-          .filter(d => (d.status === "matched" || d.status === "completed") && d.matchedNgoId)
+          .filter(d => (d.status === "accepted" || d.status === "picked_up" || d.status === "received" || d.status === "completed") && d.matchedNgoId)
           .forEach(d => {
             if (!ngosSet.has(d.matchedNgoId)) {
               ngosSet.add(d.matchedNgoId);
               
-              // Count matched and completed donations for this NGO
+              // Count accepted/active and completed donations for this NGO
               const ngoStats = {
                 matchedCount: donations.filter(
                   donation => donation.matchedNgoId === d.matchedNgoId && 
-                  (donation.status === "matched" || donation.status === "in-progress")
+                  (donation.status === "accepted" || donation.status === "picked_up" || donation.status === "received")
                 ).length,
                 completedCount: donations.filter(
                   donation => donation.matchedNgoId === d.matchedNgoId && 
@@ -809,6 +941,10 @@ async function viewDonationDetails(category) {
     showNotification("Failed to load details: " + error.message, "error");
   }
 }
+
+// Make viewDonationDetails available globally
+window.viewDonationDetails = viewDonationDetails;
+window.viewDonationDetailsByCategory = viewDonationDetails; // Alias for HTML compatibility
 
 // Open detail view page
 function openDetailView(pageTitle, data, type) {
@@ -862,6 +998,9 @@ function openDetailView(pageTitle, data, type) {
     showNotification("Failed to open detail view: " + error.message, "error");
   }
 }
+
+// Make openDetailView available globally
+window.openDetailView = openDetailView;
 
 // Initialize Impact Map with donation locations
 let impactMap = null;
@@ -965,7 +1104,7 @@ async function initializeImpactMap() {
         let markerColor = 'blue'; // default
         if (donation.status === 'completed') {
           markerColor = 'green';
-        } else if (donation.status === 'matched' || donation.status === 'in-progress') {
+        } else if (donation.status === 'accepted' || donation.status === 'in-progress') {
           markerColor = 'orange';
         }
 

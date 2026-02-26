@@ -139,6 +139,23 @@
         color: white;
       }
 
+      .status-badge.cancelled {
+        background: linear-gradient(135deg, #e74c3c, #c0392b);
+        color: white;
+      }
+
+      .status-badge.pending,
+      .status-badge.available {
+        background: linear-gradient(135deg, #f39c12, #e67e22);
+        color: white;
+      }
+
+      .status-badge.picked_up,
+      .status-badge.received {
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        color: white;
+      }
+
       .ngo-stats {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
@@ -206,6 +223,11 @@
       .timeline-item.completed::before {
         background: #00b894;
         box-shadow: 0 0 0 3px #00b894;
+      }
+
+      .timeline-item.cancelled::before {
+        background: #e74c3c;
+        box-shadow: 0 0 0 3px #e74c3c;
       }
 
       .timeline-date {

@@ -43,53 +43,49 @@ async function loadDonationDetails() {
     const donation = await donationResponse.json();
     console.log('Donation loaded:', donation);
 
-    // Check if donation has been accepted/matched or completed
-    // Accept both old and new status names for compatibility
-    const validStatuses = ['matched', 'accepted', 'completed', 'picked_up', 'received'];
-    if (!validStatuses.includes(donation.status)) {
-      console.log('Donation status:', donation.status);
-      console.log('Valid statuses:', validStatuses);
-      showError('This donation has not been accepted by an NGO yet. Current status: ' + donation.status);
-      return;
-    }
+    // Allow viewing all donation statuses including cancelled
+    // No need to restrict by status anymore
 
-    // Check if donation has NGO matched
-    if (!donation.matchedNgoId) {
-      showError('This donation has not been matched with an NGO yet');
-      return;
-    }
-
-    // Fetch NGO details
-    const ngoResponse = await fetch(`/api/ngos/details/${donation.matchedNgoId}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-
-    if (!ngoResponse.ok) {
-      const errorData = await ngoResponse.json();
-      console.error('NGO API error:', errorData);
-      throw new Error(errorData.message || 'Failed to load NGO details');
-    }
-
-    const ngoData = await ngoResponse.json();
-    console.log('NGO data loaded:', ngoData);
-
-    // Fetch NGO statistics
-    const statsResponse = await fetch(`/api/ngos/statistics/${donation.matchedNgoId}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-
+    // Fetch NGO details only if donation has been matched with an NGO
+    let ngoData = null;
     let ngoStats = {
       totalDonations: 0,
       completedDonations: 0,
       successRate: 0
     };
 
-    if (statsResponse.ok) {
-      ngoStats = await statsResponse.json();
+    if (donation.matchedNgoId) {
+      // Fetch NGO details
+      const ngoResponse = await fetch(`/api/ngos/details/${donation.matchedNgoId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (ngoResponse.ok) {
+        const ngoResponse_data = await ngoResponse.json();
+        ngoData = ngoResponse_data.ngo;  // Extract the nested ngo object
+        console.log('NGO data loaded:', ngoData);
+
+        // Fetch NGO statistics
+        const statsResponse = await fetch(`/api/ngos/statistics/${donation.matchedNgoId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (statsResponse.ok) {
+          const statsData = await statsResponse.json();
+          // Extract statistics from response (not nested in this case)
+          ngoStats = {
+            totalDonations: statsData.totalDonations || 0,
+            completedDonations: statsData.completedDonations || 0,
+            successRate: statsData.successRate || 0
+          };
+        }
+      } else {
+        console.warn('Could not fetch NGO details:', ngoResponse.status);
+      }
     }
 
     // Fetch volunteer task and details if donation has a pickup task or try to find one anyway
@@ -139,8 +135,20 @@ async function loadDonationDetails() {
 
     // Display all data
     displayDonationDetails(donation);
-    displayNGODetails(ngoData);
-    displayNGOStatistics(ngoStats);
+    
+    // Only display NGO details if NGO data exists
+    if (ngoData) {
+      displayNGODetails(ngoData);
+      displayNGOStatistics(ngoStats);
+      // Show the NGO card
+      const ngoCard = document.querySelector('.details-grid .details-card:nth-child(2)');
+      if (ngoCard) ngoCard.style.display = 'block';
+    } else {
+      // Hide the NGO card if no NGO is matched
+      const ngoCard = document.querySelector('.details-grid .details-card:nth-child(2)');
+      if (ngoCard) ngoCard.style.display = 'none';
+    }
+    
     displayTimeline(donation);
     
     if (volunteerTask && volunteerData) {
@@ -260,10 +268,22 @@ function displayTimeline(donation) {
     });
   }
 
+  // Donation cancelled
+  if (donation.status === 'cancelled' && donation.cancelledAt) {
+    events.push({
+      date: formatDate(donation.cancelledAt),
+      title: 'Donation Cancelled',
+      description: donation.cancellationReason || 'This donation was cancelled',
+      completed: true,
+      cancelled: true
+    });
+  }
+
   // Render timeline items
   events.forEach(event => {
     const item = document.createElement('div');
-    item.className = `timeline-item ${event.completed ? 'completed' : ''}`;
+    const statusClass = event.cancelled ? 'cancelled' : (event.completed ? 'completed' : '');
+    item.className = `timeline-item ${statusClass}`;
     item.innerHTML = `
       <div class="timeline-date">${event.date}</div>
       <div class="timeline-title">${event.title}</div>
@@ -297,11 +317,15 @@ function goBack() {
 function getStatusText(status) {
   const statusMap = {
     available: 'Available',
+    pending: 'Pending',
     matched: 'Accepted',
+    accepted: 'Accepted',
+    picked_up: 'Picked Up',
+    received: 'Received',
     completed: 'Completed',
     cancelled: 'Cancelled'
   };
-  return statusMap[status] || status;
+  return statusMap[status] || capitalizeFirst(status);
 }
 
 function capitalizeFirst(str) {

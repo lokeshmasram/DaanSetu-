@@ -243,7 +243,6 @@ function setupSocketListeners() {
   socket.on("donation-completed", async (donation) => {
     showNotification("Your donation was completed!", "success");
     await loadMyDonations();
-    await loadCompletedDonations();
     await updateStatistics();
   });
 
@@ -1052,7 +1051,10 @@ async function initializeImpactMap() {
     }
 
     const result = await res.json();
-    const donations = Array.isArray(result.donations) ? result.donations : [];
+    const allDonations = Array.isArray(result.donations) ? result.donations : [];
+    
+    // Filter for COMPLETED donations only
+    const donations = allDonations.filter(d => d.status === 'completed');
 
     // Clear existing markers
     impactMapMarkers.forEach(marker => marker.setMap(null));
@@ -1063,8 +1065,9 @@ async function initializeImpactMap() {
       if (placeholder) {
         placeholder.innerHTML = `
           <div style="text-align:center;max-width:420px;color:#999;">
-            <i class="fas fa-inbox" style="font-size:2rem;margin-bottom:0.5rem;"></i>
-            <p>No donations yet</p>
+            <i class="fas fa-check-circle" style="font-size:2rem;margin-bottom:0.5rem;"></i>
+            <p>No completed donations yet</p>
+            <p style="font-size:12px;margin-top:8px;">Completed donations will appear here</p>
           </div>
         `;
       }
@@ -1075,7 +1078,7 @@ async function initializeImpactMap() {
     const placeholder = document.getElementById("mapPlaceholder");
     if (placeholder) placeholder.style.display = 'none';
 
-    // Add markers for each donation with coordinates
+    // Add markers for each completed donation with coordinates
     let bounds = new google.maps.LatLngBounds();
     let hasValidCoordinates = false;
 
@@ -1100,30 +1103,38 @@ async function initializeImpactMap() {
         const location = { lat, lng };
         bounds.extend(location);
 
-        // Determine marker color based on status
-        let markerColor = 'blue'; // default
-        if (donation.status === 'completed') {
-          markerColor = 'green';
-        } else if (donation.status === 'accepted' || donation.status === 'in-progress') {
-          markerColor = 'orange';
-        }
-
+        // Green marker for completed donations
         const marker = new google.maps.Marker({
           position: location,
           map: impactMap,
-          title: `${donation.itemType} - ${donation.status}`,
-          icon: `http://maps.google.com/mapfiles/ms/icons/${markerColor}-dot.png`
+          title: `${donation.itemType} - Completed`,
+          icon: `http://maps.google.com/mapfiles/ms/icons/green-dot.png`
         });
 
         // Add click listener to show donation info
         marker.addListener('click', () => {
           new google.maps.InfoWindow({
             content: `
-              <div style="padding:10px;font-size:12px;">
-                <strong>${donation.itemType}</strong><br/>
-                Quantity: ${donation.quantity}<br/>
-                Status: <span style="font-weight:bold;">${getStatusText(donation.status)}</span><br/>
-                Location: ${donation.pickupAddress || 'TBA'}
+              <div style="padding:12px;font-size:13px;max-width:200px;">
+                <div style="font-weight:bold;color:#2e7d32;margin-bottom:8px;">
+                  <i class="fas fa-check-circle"></i> Completed
+                </div>
+                <div style="margin-bottom:6px;">
+                  <strong>Item:</strong> ${donation.itemType}
+                </div>
+                <div style="margin-bottom:6px;">
+                  <strong>Quantity:</strong> ${donation.quantity}
+                </div>
+                ${donation.ngoName ? `
+                  <div style="margin-bottom:6px;">
+                    <strong>NGO:</strong> ${donation.ngoName}
+                  </div>
+                ` : ''}
+                ${donation.completedAt ? `
+                  <div style="font-size:11px;color:#666;margin-top:8px;">
+                    Completed: ${new Date(donation.completedAt).toLocaleDateString()}
+                  </div>
+                ` : ''}
               </div>
             `
           }).open(impactMap, marker);
@@ -1141,8 +1152,8 @@ async function initializeImpactMap() {
       if (placeholder) {
         placeholder.innerHTML = `
           <div style="text-align:center;max-width:420px;color:#999;">
-            <i class="fas fa-map-pin" style="font-size:2rem;margin-bottom:0.5rem;"></i>
-            <p>Donations without location data</p>
+            <i class="fas fa-map-marker-alt" style="font-size:2rem;margin-bottom:0.5rem;"></i>
+            <p>Completed donations without location data</p>
           </div>
         `;
       }

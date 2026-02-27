@@ -61,12 +61,12 @@
     <!-- Quick Access Section (for non-logged in users) -->
     <section
       id="quick-access"
-      class="section"
-      style="background-color: #f8fafc; display: none"
+      class="section quick-access-section"
+      style="display: none"
     >
       <div class="container">
-        <h2 class="section-title">Quick Access</h2>
-        <p class="section-text">
+        <h2 class="section-title" style="color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">Quick Access</h2>
+        <p class="section-text" style="color: white; text-shadow: 1px 1px 3px rgba(0,0,0,0.8);">
           Already have an account? Access your dashboard directly:
         </p>
         <div
@@ -90,9 +90,6 @@
             onclick="loginAndRedirect('volunteer')"
           >
             Volunteer Dashboard
-          </button>
-          <button class="btn btn-outline" onclick="loginAndRedirect('admin')">
-            Admin Dashboard
           </button>
         </div>
       </div>

@@ -309,6 +309,33 @@ body {
     line-height: 1.8;
 }
 
+/* Quick Access Section with Background */
+.quick-access-section {
+    background: linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)), 
+                url('quick-access-bg.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    filter: brightness(1.15);
+}
+
+.quick-access-section .btn-outline {
+    background-color: rgba(255, 255, 255, 0.95);
+    color: #2563eb;
+    border: 2px solid rgba(255, 255, 255, 0.95);
+    font-weight: 600;
+    padding: 14px 32px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.quick-access-section .btn-outline:hover {
+    background-color: #2563eb;
+    color: white;
+    border-color: #2563eb;
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+}
+
 /* How It Works Steps */
 .steps {
     display: grid;

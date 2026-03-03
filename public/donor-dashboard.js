@@ -160,7 +160,7 @@ async function loadDonorData() {
 
     const data = await res.json();
     donorData = data.user;
-    donorNameElement.textContent = donorData.name || donorData.email;
+    donorNameElement.textContent = `${donorData.name || donorData.email} (Donor)`;
   } catch (error) {
     console.error("Load donor data error:", error);
     donorNameElement.textContent = "Donor";

@@ -212,7 +212,7 @@ router.post("/verify-ngo/:ngoId", authenticateAdmin, async (req, res) => {
         const activity = {
           type: 'ngo_rejected',
           title: 'NGO Verification Rejected',
-          description: `${pendingNgoData.name || 'NGO'} verification was rejected`,
+          description: `${pendingNgoData.name || 'NGO'} (NGO) verification was rejected`,
           details: adminNotes || '',
           icon: 'fa-times-circle',
           color: '#ff6b6b',
@@ -454,7 +454,7 @@ router.get("/activities", authenticateAdmin, async (req, res) => {
         icon: 'fa-gift',
         color: '#667eea',
         title: 'New Donation',
-        description: `${donation.donorName || 'A donor'} listed ${donation.itemType}`,
+        description: `${donation.donorName || 'A donor'} (Donor) listed ${donation.itemType}`,
         timestamp: donation.createdAt,
         relatedId: doc.id
       });
@@ -467,7 +467,7 @@ router.get("/activities", authenticateAdmin, async (req, res) => {
           icon: 'fa-handshake',
           color: '#00b894',
           title: 'Donation Accepted',
-          description: `${donation.ngoName || 'An NGO'} accepted ${donation.itemType}`,
+          description: `${donation.ngoName || 'An NGO'} (NGO) accepted ${donation.itemType}`,
           timestamp: donation.acceptedAt || donation.createdAt,
           relatedId: doc.id
         });
@@ -481,7 +481,7 @@ router.get("/activities", authenticateAdmin, async (req, res) => {
           icon: 'fa-check-circle',
           color: '#00b894',
           title: 'Donation Completed',
-          description: `${donation.itemType} successfully delivered to ${donation.ngoName || 'NGO'}`,
+          description: `${donation.itemType} successfully delivered to ${donation.ngoName || 'NGO'} (NGO)`,
           timestamp: donation.completedAt || donation.createdAt,
           relatedId: doc.id
         });
@@ -495,7 +495,7 @@ router.get("/activities", authenticateAdmin, async (req, res) => {
           icon: 'fa-times-circle',
           color: '#ff6b6b',
           title: 'Donation Cancelled',
-          description: `${donation.itemType} donation was cancelled`,
+          description: `${donation.donorName || 'A donor'} (Donor) cancelled ${donation.itemType} donation`,
           timestamp: donation.cancelledAt || donation.updatedAt || donation.createdAt,
           relatedId: doc.id
         });
@@ -514,7 +514,7 @@ router.get("/activities", authenticateAdmin, async (req, res) => {
           icon: 'fa-user-plus',
           color: '#667eea',
           title: 'New Donor Registered',
-          description: `${user.name} joined as a donor`,
+          description: `${user.name} (Donor) joined the platform`,
           timestamp: user.createdAt,
           relatedId: doc.id
         });
@@ -525,7 +525,7 @@ router.get("/activities", authenticateAdmin, async (req, res) => {
           icon: 'fa-hands-helping',
           color: '#ffd93d',
           title: 'New Volunteer Registered',
-          description: `${user.name} joined as a volunteer`,
+          description: `${user.name} (Volunteer) joined the platform`,
           timestamp: user.createdAt,
           relatedId: doc.id
         });
@@ -544,8 +544,72 @@ router.get("/activities", authenticateAdmin, async (req, res) => {
           icon: 'fa-certificate',
           color: '#00b894',
           title: 'NGO Verified',
-          description: `${ngo.name} has been verified`,
+          description: `${ngo.name} (NGO) has been verified`,
           timestamp: ngo.verifiedAt,
+          relatedId: doc.id
+        });
+      }
+    });
+
+    // Get volunteer tasks activities
+    const volunteerTasksSnapshot = await db.collection("volunteer_tasks").get();
+    
+    // Create activities using stored volunteer names
+    volunteerTasksSnapshot.forEach((doc) => {
+      const task = doc.data();
+      
+      // Add task creation activity
+      activities.push({
+        id: `task-created-${doc.id}`,
+        type: 'task_created',
+        icon: 'fa-tasks',
+        color: '#667eea',
+        title: 'Volunteer Task Created',
+        description: `${task.ngoName || 'An NGO'} (NGO) created task: ${task.title}`,
+        timestamp: task.createdAt,
+        relatedId: doc.id
+      });
+      
+      // Add task assigned activity
+      if (task.status === 'assigned' || task.status === 'completed') {
+        const volunteerName = task.assignedVolunteerName || 'A volunteer';
+        activities.push({
+          id: `task-assigned-${doc.id}`,
+          type: 'task_assigned',
+          icon: 'fa-user-check',
+          color: '#ffd93d',
+          title: 'Task Assigned',
+          description: `${volunteerName} (Volunteer) accepted task: ${task.title}`,
+          timestamp: task.assignedAt || task.createdAt,
+          relatedId: doc.id
+        });
+      }
+      
+      // Add task completed activity
+      if (task.status === 'completed') {
+        const volunteerName = task.assignedVolunteerName || 'A volunteer';
+        activities.push({
+          id: `task-completed-${doc.id}`,
+          type: 'task_completed',
+          icon: 'fa-check-circle',
+          color: '#00b894',
+          title: 'Task Completed',
+          description: `${volunteerName} (Volunteer) completed task: ${task.title}`,
+          timestamp: task.completedAt || task.createdAt,
+          relatedId: doc.id
+        });
+      }
+      
+      // Add task cancelled activity
+      if (task.status === 'cancelled') {
+        activities.push({
+          id: `task-cancelled-${doc.id}`,
+          type: 'task_cancelled',
+          icon: 'fa-times-circle',
+          color: '#ff6b6b',
+          title: 'Task Cancelled',
+          description: `${task.ngoName || 'NGO'} (NGO) cancelled task: ${task.title}`,
+          timestamp: task.cancelledAt || task.createdAt,
           relatedId: doc.id
         });
       }

@@ -294,6 +294,7 @@ router.post("/:donationId/accept", authenticateToken, async (req, res) => {
     await donationRef.update({
       status: "accepted",
       matchedNgoId: ngoId,
+      ngoName: ngoData.name, // Store NGO name for later reference
       acceptedAt: new Date(),
     });
 

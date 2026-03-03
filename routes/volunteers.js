@@ -149,9 +149,12 @@ router.get("/tasks/ngo", authenticateToken, async (req, res) => {
       });
     }
 
+    const ngoId = req.user.uid;
+
+    // Get all tasks created by this NGO (not just available ones)
     const tasksSnapshot = await db
       .collection("volunteer_tasks")
-      .where("status", "==", "available")
+      .where("ngoId", "==", ngoId)
       .get();
 
     const tasks = [];
@@ -454,12 +457,31 @@ router.post("/tasks/:taskId/accept", authenticateToken, async (req, res) => {
     await taskRef.update({
       status: "assigned",
       assignedVolunteerId: volunteerId,
+      assignedVolunteerName: req.user.name || 'Volunteer', // Store volunteer name for later reference
       assignedAt: new Date(),
     });
 
     console.log("   ✅ Task updated successfully");
     console.log("      New status: assigned");
     console.log("      Assigned to:", volunteerId);
+
+    // Record platform activity
+    try {
+      const activity = {
+        type: 'task_assigned',
+        title: 'Task Assigned',
+        description: `${req.user.name || 'A volunteer'} (Volunteer) accepted task: ${taskData.title}`,
+        icon: 'fa-user-check',
+        color: '#ffd93d',
+        timestamp: new Date(),
+        relatedId: taskId
+      };
+
+      await db.collection('admin_activities').add(activity);
+      console.log(`   📊 Platform activity recorded for task assignment ${taskId}`);
+    } catch (actErr) {
+      console.warn('   ⚠️ Could not record platform activity:', actErr.message);
+    }
 
     // Notify the NGO that created the task
     const io = req.app.get("io");
@@ -563,6 +585,24 @@ router.post("/tasks/:taskId/complete", authenticateToken, async (req, res) => {
       status: "completed",
       completedAt: new Date(),
     });
+
+    // Record platform activity
+    try {
+      const activity = {
+        type: 'task_completed',
+        title: 'Task Completed',
+        description: `${req.user.name || 'A volunteer'} (Volunteer) completed task: ${taskData.title}`,
+        icon: 'fa-check-circle',
+        color: '#00b894',
+        timestamp: new Date(),
+        relatedId: taskId
+      };
+
+      await db.collection('admin_activities').add(activity);
+      console.log(`Platform activity recorded for task completion ${taskId}`);
+    } catch (actErr) {
+      console.warn('Could not record platform activity:', actErr.message);
+    }
 
     // If this task is related to a donation, update the donation status
     if (taskData.donationId) {
@@ -696,6 +736,24 @@ router.post("/create-task", authenticateToken, async (req, res) => {
 
     const taskRef = await db.collection("volunteer_tasks").add(taskData);
 
+    // Record platform activity
+    try {
+      const activity = {
+        type: 'task_created',
+        title: 'Volunteer Task Created',
+        description: `${ngoData.name || 'An NGO'} (NGO) created task: ${title}`,
+        icon: 'fa-tasks',
+        color: '#667eea',
+        timestamp: new Date(),
+        relatedId: taskRef.id
+      };
+
+      await db.collection('admin_activities').add(activity);
+      console.log(`Platform activity recorded for task creation ${taskRef.id}`);
+    } catch (actErr) {
+      console.warn('Could not record platform activity:', actErr.message);
+    }
+
     // Emit real-time notification to volunteers
     const io = req.app.get("io");
     io.emit("new-volunteer-task", {
@@ -715,6 +773,114 @@ router.post("/create-task", authenticateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to create volunteer task",
+      error: error.message,
+    });
+  }
+});
+
+// Cancel a volunteer task (only available tasks can be cancelled by the NGO who created them)
+router.post("/tasks/:taskId/cancel", authenticateToken, async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const userId = req.user.uid;
+
+    console.log("Cancelling volunteer task:", { taskId, userId });
+
+    // Get task document
+    const taskRef = db.collection("volunteer_tasks").doc(taskId);
+    const taskDoc = await taskRef.get();
+
+    if (!taskDoc.exists) {
+      return res.status(404).json({
+        success: false,
+        message: "Volunteer task not found",
+      });
+    }
+
+    const task = taskDoc.data();
+
+    // Check if user is the NGO who created this task
+    if (task.ngoId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only cancel your own volunteer tasks",
+      });
+    }
+
+    // Check if task can be cancelled
+    // Can cancel if: available (not yet assigned or in progress)
+    const canCancel = 
+      task.status === 'available';
+    
+    if (!canCancel) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot cancel task with status: ${task.status}. Only available tasks can be cancelled.`,
+      });
+    }
+
+    // Update task status to cancelled
+    await taskRef.update({
+      status: "cancelled",
+      cancelledAt: new Date(),
+      cancelledBy: userId,
+    });
+
+    console.log("Volunteer task cancelled successfully:", taskId);
+
+    // Record platform activity
+    let activityRef = null;
+    try {
+      const activity = {
+        type: 'task_cancelled',
+        title: 'Task Cancelled',
+        description: `${task.ngoName || 'NGO'} (NGO) cancelled task: ${task.title}`,
+        icon: 'fa-times-circle',
+        color: '#ff6b6b',
+        timestamp: new Date(),
+        relatedId: taskId
+      };
+
+      activityRef = await db.collection('admin_activities').add(activity);
+      console.log(`Platform activity recorded for task ${taskId}, activityId=${activityRef.id}`);
+    } catch (actErr) {
+      console.warn('Could not record platform activity:', actErr.message);
+    }
+
+    // Emit real-time update to NGO
+    const io = req.app.get("io");
+    io.to(`ngo-${userId}`).emit("task-cancelled", {
+      taskId,
+      message: "Volunteer task cancelled successfully",
+    });
+
+    // Notify admin dashboards to refresh activities
+    if (io && activityRef) {
+      io.emit('platform-activity', { 
+        action: 'new_activity', 
+        activity: { 
+          id: activityRef.id, 
+          type: 'task_cancelled',
+          title: 'Task Cancelled',
+          description: `${task.ngoName || 'NGO'} (NGO) cancelled task: ${task.title}`,
+          icon: 'fa-times-circle',
+          color: '#ff6b6b',
+          timestamp: new Date(),
+          relatedId: taskId
+        } 
+      });
+      console.log('Sent platform-activity notification for task cancellation');
+    }
+
+    res.json({
+      success: true,
+      message: "Volunteer task cancelled successfully",
+    });
+  } catch (error) {
+    console.error("Cancel volunteer task error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to cancel volunteer task",
       error: error.message,
     });
   }

@@ -462,10 +462,25 @@
     border: 1px solid #a7f3d0;
 }
 
+.task-status.cancelled {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
 .task-details {
     color: #4a5568;
     font-size: 0.9rem;
     margin-bottom: 0.5rem;
+}
+
+.task-actions {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--gray-200);
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
 }
 
 /* Empty States */

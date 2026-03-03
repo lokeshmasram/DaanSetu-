@@ -149,7 +149,7 @@ function createAuthErrorContainer() {
 // Load admin data
 async function loadAdminData() {
   adminNameElement.textContent =
-    (currentUser.user && currentUser.user.name) || "Admin";
+    `${(currentUser.user && currentUser.user.name) || "Admin"} (Admin)`;
 }
 
 // Load platform statistics
@@ -726,6 +726,16 @@ function setupSocketListeners() {
   // User registered notification
   socket.on("user-registered", (data) => {
     loadPlatformActivities();
+  });
+
+  // Generic platform activity notification
+  socket.on("platform-activity", (data) => {
+    console.log("Platform activity received:", data);
+    loadPlatformActivities();
+    if (data.action === 'new_activity' && data.activity) {
+      const activityType = data.activity.title || 'Activity';
+      showNotification(`${activityType}: ${data.activity.description || ''}`, "info");
+    }
   });
 }
 

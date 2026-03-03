@@ -79,7 +79,7 @@ async function checkAuth() {
 
 // Load volunteer data
 async function loadVolunteerData() {
-  volunteerNameElement.textContent = currentUser.name || currentUser.email;
+  volunteerNameElement.textContent = `${currentUser.name || currentUser.email} (Volunteer)`;
 }
 
 // Load available tasks

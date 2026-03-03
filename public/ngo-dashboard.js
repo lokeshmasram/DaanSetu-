@@ -144,6 +144,41 @@ const totalAcceptedElement = document.getElementById("totalAccepted");
 const totalCompletedElement = document.getElementById("totalCompleted");
 const pendingPickupElement = document.getElementById("pendingPickup");
 
+// Cancel volunteer task function - defined early so it's available globally
+async function cancelTask(taskId) {
+  try {
+    console.log("🚫 Attempting to cancel volunteer task:", taskId);
+
+    if (!confirm('Are you sure you want to cancel this volunteer task? This action cannot be undone.')) {
+      return;
+    }
+
+    const response = await fetch(`/api/volunteers/tasks/${taskId}/cancel`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+      console.log("✅ Volunteer task cancelled successfully");
+      showNotification(result.message || "Volunteer task cancelled successfully", "success");
+      await loadVolunteerTasks();
+    } else {
+      throw new Error(result.message || "Failed to cancel volunteer task");
+    }
+  } catch (error) {
+    console.error("❌ Cancel volunteer task error:", error);
+    showNotification(error.message || "Failed to cancel volunteer task", "error");
+  }
+}
+
+// Make cancelTask available globally immediately
+window.cancelTask = cancelTask;
+
 // Initialize dashboard
 document.addEventListener("DOMContentLoaded", async () => {
   await checkAuth();
@@ -222,7 +257,7 @@ async function loadNGOData() {
       ngoData = result.ngo;
       ngoData.status = result.status;
       ngoData.id = currentUser.uid;
-      ngoNameElement.textContent = ngoData.name;
+      ngoNameElement.textContent = `${ngoData.name} (NGO)`;
       
       console.log("✅ NGO data loaded:", {
         name: ngoData.name,
@@ -1061,7 +1096,21 @@ function renderVolunteerTasks(tasks) {
                   task.date
                 ).toLocaleDateString()}</p>
                 <p><strong>Description:</strong> ${task.description}</p>
+                ${
+                  task.assignedVolunteerId
+                    ? `<p><strong>Assigned To:</strong> Volunteer ID: ${task.assignedVolunteerId}</p>`
+                    : ""
+                }
             </div>
+            ${
+              task.status === "available"
+                ? `<div class="task-actions">
+                    <button onclick="cancelTask('${task.id}')" class="btn-danger btn-sm">
+                        <i class="fas fa-times"></i> Cancel Task
+                    </button>
+                  </div>`
+                : ""
+            }
         </div>
     `
     )
